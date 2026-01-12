@@ -9,9 +9,10 @@ This skill provides Claude Code with deep knowledge of the current Solana develo
 - **UI**: Solana Foundation framework-kit (`@solana/client` + `@solana/react-hooks`)
 - **SDK**: `@solana/kit` (v5.x) for new client work
 - **Legacy Interop**: `@solana/web3-compat` for bridging to web3.js dependencies
-- **Programs**: Anchor (default), Pinocchio/Steel for specialized needs
-- **Testing**: Bankrun for unit tests, Surfpool for integration
+- **Programs**: Anchor (default), Pinocchio for high-performance needs
+- **Testing**: LiteSVM/Mollusk for unit tests, Surfpool for integration
 - **Codegen**: Codama-first IDL and client generation
+- **Security**: Comprehensive vulnerability patterns and prevention
 
 ## Installation
 
@@ -19,7 +20,7 @@ This skill provides Claude Code with deep knowledge of the current Solana develo
 
 ```bash
 # Clone and install to personal skills directory
-git clone https://github.com/YOUR_USERNAME/solana-dev-skill.git
+git clone https://github.com/GuiBibeau/solana-dev-skill.git
 cp -r solana-dev-skill/skill ~/.claude/skills/solana-dev
 ```
 
@@ -51,11 +52,11 @@ skill/
 ├── frontend-framework-kit.md   # UI patterns with framework-kit
 ├── kit-web3-interop.md         # Kit ↔ web3.js boundary patterns
 ├── programs-anchor.md          # Anchor program development
-├── programs-native.md          # Native programs (Pinocchio/Steel)
-├── testing.md                  # Testing strategy (Bankrun/Surfpool)
+├── programs-pinocchio.md       # Pinocchio (high-performance native)
+├── testing.md                  # Testing (LiteSVM/Mollusk/Surfpool)
 ├── idl-codegen.md              # IDL and client generation
-├── payments.md                 # Payments and commerce
-├── security.md                 # Security checklist
+├── payments.md                 # Payments with Commerce Kit
+├── security.md                 # Security vulnerabilities & prevention
 └── resources.md                # Curated reference links
 ```
 
@@ -66,9 +67,9 @@ Once installed, Claude Code will automatically use this skill when you ask about
 - Solana dApp UI work (React / Next.js)
 - Wallet connection and signing flows
 - Transaction building, sending, and confirmation UX
-- On-chain program development (Anchor or native Rust)
+- On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
-- Local testing (Bankrun, Surfpool, test-validator)
+- Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
 
 ### Example Prompts
@@ -76,8 +77,9 @@ Once installed, Claude Code will automatically use this skill when you ask about
 ```
 "Help me set up a Next.js app with Solana wallet connection"
 "Create an Anchor program for a simple escrow"
+"Convert this Anchor program to Pinocchio for better CU efficiency"
 "How do I integrate a legacy web3.js library with my Kit-based app?"
-"Write Bankrun tests for my token transfer instruction"
+"Write LiteSVM tests for my token transfer instruction"
 "Review this program for security issues"
 ```
 
@@ -89,10 +91,20 @@ This skill encodes opinionated best practices:
 |-------|---------------|-------------|
 | UI Framework | framework-kit | ConnectorKit (headless) |
 | Client SDK | @solana/kit | @solana/web3-compat (boundary) |
-| Program Framework | Anchor | Pinocchio, Steel |
-| Unit Testing | Bankrun | solana-program-test |
+| Program Framework | Anchor | Pinocchio (performance) |
+| Unit Testing | LiteSVM / Mollusk | - |
 | Integration Testing | Surfpool | solana-test-validator |
 | Client Generation | Codama | Kinobi (Umi) |
+
+## Content Sources
+
+This skill incorporates best practices from:
+
+- [Blueshift Learning Platform](https://learn.blueshift.gg/) - Comprehensive Solana courses
+- [Solana Official Documentation](https://solana.com/docs)
+- [Anza/Pinocchio](https://github.com/anza-xyz/pinocchio) - Zero-dependency program development
+- [LiteSVM](https://github.com/LiteSVM/litesvm) - Lightweight testing
+- [Surfpool](https://docs.surfpool.dev/) - Integration testing with mainnet state
 
 ## Progressive Disclosure
 
@@ -110,11 +122,3 @@ Contributions are welcome! Please ensure any updates reflect current Solana ecos
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-## Resources
-
-- [Claude Code Documentation](https://docs.anthropic.com/claude-code)
-- [Claude Code Skills Guide](https://code.claude.com/docs/en/skills)
-- [Solana Documentation](https://solana.com/docs)
-- [framework-kit Repository](https://github.com/solana-foundation/framework-kit)
-- [@solana/kit Repository](https://github.com/anza-xyz/kit)

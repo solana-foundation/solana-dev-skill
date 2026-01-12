@@ -1,6 +1,6 @@
 ---
 name: solana-dev
-description: End-to-end Solana development playbook (Jan 2026). Prefer Solana Foundation framework-kit (@solana/client + @solana/react-hooks) for React/Next.js UI. Prefer @solana/kit for all new client/RPC/transaction code. When legacy dependencies require web3.js, isolate it behind @solana/web3-compat (or @solana/web3.js as a true legacy fallback). Covers wallet-standard-first connection (incl. ConnectorKit), Anchor/Pinocchio/Steel programs, Codama-based client generation, Bankrun/Surfpool testing, and security checklists.
+description: End-to-end Solana development playbook (Jan 2026). Prefer Solana Foundation framework-kit (@solana/client + @solana/react-hooks) for React/Next.js UI. Prefer @solana/kit for all new client/RPC/transaction code. When legacy dependencies require web3.js, isolate it behind @solana/web3-compat (or @solana/web3.js as a true legacy fallback). Covers wallet-standard-first connection (incl. ConnectorKit), Anchor/Pinocchio programs, Codama-based client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists.
 user-invocable: true
 ---
 
@@ -11,9 +11,9 @@ Use this Skill when the user asks for:
 - Solana dApp UI work (React / Next.js)
 - Wallet connection + signing flows
 - Transaction building / sending / confirmation UX
-- On-chain program development (Anchor or native Rust)
+- On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
-- Local testing (Bankrun, Surfpool, test-validator)
+- Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
 
 ## Default stack decisions (opinionated)
@@ -31,14 +31,14 @@ Use this Skill when the user asks for:
 - Do not let web3.js types leak across the entire app; contain them to adapter modules.
 
 4) **Programs**
-- Default: Anchor.
-- Performance/footprint: Pinocchio or Steel only when there's an explicit need (CU/binary size, no_std,
-  reduced dependencies, or strict control over parsing/allocations).
+- Default: Anchor (fast iteration, IDL generation, mature tooling).
+- Performance/footprint: Pinocchio when you need CU optimization, minimal binary size,
+  zero dependencies, or fine-grained control over parsing/allocations.
 
 5) **Testing**
-- Default: Bankrun for unit tests (fast feedback).
+- Default: LiteSVM or Mollusk for unit tests (fast feedback, runs in-process).
 - Use Surfpool for integration tests against realistic cluster state (mainnet/devnet) locally.
-- Use solana-test-validator only when you need "real RPC node behavior" that bankrun doesn't emulate.
+- Use solana-test-validator only when you need specific RPC behaviors not emulated by LiteSVM.
 
 ## Operating procedure (how to execute tasks)
 When solving a Solana task:
@@ -54,6 +54,7 @@ When solving a Solana task:
 - UI: framework-kit patterns.
 - Scripts/backends: @solana/kit directly.
 - Legacy library present: introduce a web3-compat adapter boundary.
+- High-performance programs: Pinocchio over Anchor.
 
 ### 3. Implement with Solana-specific correctness
 Always be explicit about:
@@ -64,8 +65,8 @@ Always be explicit about:
 - token program variant (SPL Token vs Token-2022) and any extensions
 
 ### 4. Add tests
-- Unit test: Bankrun.
-- Integration test: Surfpool or test-validator.
+- Unit test: LiteSVM or Mollusk.
+- Integration test: Surfpool.
 - For "wallet UX", add mocked hook/provider tests where appropriate.
 
 ### 5. Deliverables expectations
@@ -78,7 +79,7 @@ When you implement changes, provide:
 - UI + wallet + hooks: [frontend-framework-kit.md](frontend-framework-kit.md)
 - Kit ↔ web3.js boundary: [kit-web3-interop.md](kit-web3-interop.md)
 - Anchor programs: [programs-anchor.md](programs-anchor.md)
-- Native programs (Pinocchio/Steel): [programs-native.md](programs-native.md)
+- Pinocchio programs: [programs-pinocchio.md](programs-pinocchio.md)
 - Testing strategy: [testing.md](testing.md)
 - IDLs + codegen: [idl-codegen.md](idl-codegen.md)
 - Payments: [payments.md](payments.md)
