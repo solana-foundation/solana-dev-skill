@@ -2,6 +2,12 @@
 
 A comprehensive Claude Code skill for modern Solana development (January 2026 best practices).
 
+## Quick Install
+
+**[Download solana-dev.skill](./solana-dev.skill)** and drag it into Claude Code. That's it!
+
+Once installed, use `/solana-dev` to activate the skill or just ask about Solana development and Claude will automatically use it.
+
 ## Overview
 
 This skill provides Claude Code with deep knowledge of the current Solana development ecosystem:
@@ -16,7 +22,7 @@ This skill provides Claude Code with deep knowledge of the current Solana develo
 
 ## Installation
 
-### Quick Install (Personal)
+### Manual Install (Personal)
 
 ```bash
 # Clone and install to personal skills directory
@@ -24,7 +30,7 @@ git clone https://github.com/GuiBibeau/solana-dev-skill.git
 cp -r solana-dev-skill/skill ~/.claude/skills/solana-dev
 ```
 
-### Quick Install (Project)
+### Manual Install (Project)
 
 ```bash
 # Install to project-specific skills directory
