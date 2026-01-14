@@ -278,7 +278,7 @@ await connection._rpcRequest('surfnet_setAccount', [{
 
 // Set token account
 await connection._rpcRequest('surfnet_setTokenAccount', [{
-    pubkey: tokenAccountPubkey.toString(),
+    pubkey: ownerPubkey.toString(),        // Owner of the token account (wallet)
     mint: mintPubkey.toString(),
     owner: ownerPubkey.toString(),
     amount: "1000000",

@@ -250,6 +250,19 @@ pub fn batch_operation(ctx: Context<BatchOp>, amounts: Vec<u64>) -> Result<()> {
 - Keep Solana CLI + Anchor versions aligned in CI and developer setup
 - Pin versions in `Anchor.toml`
 
+## Compatibility Notes for Anchor 0.32.0
+
+To resolve build conflicts with certain crates in Anchor 0.32.0, run these cargo update commands in your project root:
+
+```bash
+cargo update base64ct --precise 1.6.0
+cargo update constant_time_eq --precise 0.4.1
+cargo update blake3 --precise 1.5.5
+```
+
+Additionally, if you encounter warnings about `solana-program` conflicts, add `solana-program = "3"` to the `[dependencies]` section in your program's `Cargo.toml` file (e.g., `programs/your-program/Cargo.toml`).
+
+
 ## Security Best Practices
 
 ### Account Validation
