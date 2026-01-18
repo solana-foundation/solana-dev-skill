@@ -13,17 +13,32 @@ Use Pinocchio when you need:
 
 ## Core Architecture
 
+### Program Structure Validation Checklist
+
+Before building/deploying, verify lib.rs contains all required components:
+
+- [ ] `entrypoint!(process_instruction)` macro
+- [ ] `pub const ID: Address = Address::new_from_array([...])` with correct program ID
+- [ ] `fn process_instruction(program_id: &Address, accounts: &[AccountView], data: &[u8]) -> ProgramResult`
+- [ ] Instruction routing logic with proper discriminators
+- [ ] `pub mod instructions; pub use instructions::*;`
+
 ### Entrypoint Pattern
 
 ```rust
-use pinocchio::{entrypoint, program_error::ProgramError, pubkey::Pubkey, ProgramResult};
-use pinocchio::account_info::AccountInfo;
+use pinocchio::{
+    account::AccountView,
+    address::Address,
+    entrypoint,
+    error::ProgramError,
+    ProgramResult,
+};
 
 entrypoint!(process_instruction);
 
 fn process_instruction(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
+    _program_id: &Address,
+    accounts: &[AccountView],
     instruction_data: &[u8],
 ) -> ProgramResult {
     match instruction_data.split_first() {
@@ -36,6 +51,49 @@ fn process_instruction(
 
 Single-byte discriminators support 255 instructions; use two bytes for up to 65,535 variants.
 
+### Panic Handler Configuration
+
+**For std environments (SBF builds):**
+```rust
+entrypoint!(process_instruction);
+// Remove nostd_panic_handler!() - std provides panic handling
+```
+
+**For no_std environments:**
+```rust
+#![no_std]
+entrypoint!(process_instruction);
+nostd_panic_handler!();
+```
+
+**Critical**: Never include both - causes duplicate lang item error in SBF builds.
+
+### Program ID Declaration
+
+```rust
+pub const ID: Address = Address::new_from_array([
+    // Your 32-byte program ID as bytes
+    0xXX, 0xXX, ..., 0xXX,
+]);
+```
+// Note: Use `Address::new_from_array()` not `Address::new()`
+
+### Recommended Import Structure
+
+```rust
+use pinocchio::{
+    account::AccountView,
+    address::Address,
+    entrypoint,
+    error::ProgramError,
+    ProgramResult,
+};
+// Add CPI imports only when needed:
+// cpi::{invoke_signed, Seed, Signer},
+// Add system program imports only when needed:
+// pinocchio_system::instructions::Transfer,
+```
+
 ### Instruction Structure
 
 Separate validation from business logic using the `TryFrom` trait:
@@ -46,10 +104,10 @@ pub struct Deposit<'a> {
     pub data: DepositData,
 }
 
-impl<'a> TryFrom<(&'a [u8], &'a [AccountInfo])> for Deposit<'a> {
+impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for Deposit<'a> {
     type Error = ProgramError;
 
-    fn try_from((data, accounts): (&'a [u8], &'a [AccountInfo])) -> Result<Self, Self::Error> {
+    fn try_from((data, accounts): (&'a [u8], &'a [AccountView])) -> Result<Self, Self::Error> {
         let accounts = DepositAccounts::try_from(accounts)?;
         let data = DepositData::try_from(data)?;
         Ok(Self { accounts, data })
@@ -74,15 +132,15 @@ Pinocchio requires manual validation. Wrap all checks in `TryFrom` implementatio
 
 ```rust
 pub struct DepositAccounts<'a> {
-    pub owner: &'a AccountInfo,
-    pub vault: &'a AccountInfo,
-    pub system_program: &'a AccountInfo,
+    pub owner: &'a AccountView,
+    pub vault: &'a AccountView,
+    pub system_program: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountInfo]> for DepositAccounts<'a> {
+impl<'a> TryFrom<&'a [AccountView]> for DepositAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
         let [owner, vault, system_program, _remaining @ ..] = accounts else {
             return Err(ProgramError::NotEnoughAccountKeys);
         };
@@ -93,12 +151,28 @@ impl<'a> TryFrom<&'a [AccountInfo]> for DepositAccounts<'a> {
         }
 
         // Owner check
+        if !vault.owned_by(&pinocchio_system::ID) {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+
+        // Program ID check (prevents arbitrary CPI)
+        if system_program.address() != &pinocchio_system::ID {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        Ok(Self { owner, vault, system_program })
+    }
+}
+
+
+
+        // Owner check
         if !vault.is_owned_by(&pinocchio_system::ID) {
             return Err(ProgramError::InvalidAccountOwner);
         }
 
         // Program ID check (prevents arbitrary CPI)
-        if system_program.key() != &pinocchio_system::ID {
+        if system_program.address() != &pinocchio_system::ID {
             return Err(ProgramError::IncorrectProgramId);
         }
 
@@ -141,8 +215,8 @@ impl<'a> TryFrom<&'a [u8]> for DepositData {
 pub struct Mint;
 
 impl Mint {
-    pub fn check(account: &AccountInfo) -> Result<(), ProgramError> {
-        if !account.is_owned_by(&pinocchio_token::ID) {
+    pub fn check(account: &AccountView) -> Result<(), ProgramError> {
+        if !account.owned_by(&pinocchio_token::ID) {
             return Err(ProgramError::InvalidAccountOwner);
         }
         if account.data_len() != pinocchio_token::state::Mint::LEN {
@@ -152,8 +226,8 @@ impl Mint {
     }
 
     pub fn init(
-        account: &AccountInfo,
-        payer: &AccountInfo,
+        account: &AccountView,
+        payer: &AccountView,
         decimals: u8,
         mint_authority: &[u8; 32],
         freeze_authority: Option<&[u8; 32]>,
@@ -191,7 +265,7 @@ pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
 pub struct Mint2022;
 
 impl Mint2022 {
-    pub fn check(account: &AccountInfo) -> Result<(), ProgramError> {
+    pub fn check(account: &AccountView) -> Result<(), ProgramError> {
         if !account.is_owned_by(&TOKEN_2022_PROGRAM_ID) {
             return Err(ProgramError::InvalidAccountOwner);
         }
@@ -217,7 +291,7 @@ impl Mint2022 {
 pub struct MintInterface;
 
 impl MintInterface {
-    pub fn check(account: &AccountInfo) -> Result<(), ProgramError> {
+    pub fn check(account: &AccountView) -> Result<(), ProgramError> {
         if account.is_owned_by(&pinocchio_token::ID) {
             if account.data_len() != pinocchio_token::state::Mint::LEN {
                 return Err(ProgramError::InvalidAccountData);
@@ -253,7 +327,7 @@ use pinocchio::{seeds::Seed, signer::Signer};
 
 let seeds = [
     Seed::from(b"vault"),
-    Seed::from(self.accounts.owner.key().as_ref()),
+    Seed::from(self.accounts.owner.address().as_ref()),
     Seed::from(&[bump]),
 ];
 let signers = [Signer::from(&seeds)];
@@ -416,7 +490,7 @@ impl From<VaultError> for ProgramError {
 Prevent revival attacks by marking closed accounts:
 
 ```rust
-pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult {
+pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
     // Mark as closed (prevents reinitialization)
     {
         let mut data = account.try_borrow_mut_data()?;
@@ -473,7 +547,7 @@ Use references instead of heap allocations:
 ```rust
 // Good: references with borrowed lifetimes
 pub struct Instruction<'a> {
-    pub accounts: &'a [AccountInfo],
+    pub accounts: &'a [AccountView],
     pub data: &'a [u8],
 }
 
@@ -490,11 +564,11 @@ If a CPI will fail on incorrect accounts anyway, skip pre-validation:
 ```rust
 // Instead of validating ATA derivation, compute expected address
 let expected_ata = find_program_address(
-    &[owner.key(), token_program.key(), mint.key()],
+    &[owner.address(), token_program.address(), mint.address()],
     &pinocchio_associated_token_account::ID,
 ).0;
 
-if account.key() != &expected_ata {
+if account.address() != &expected_ata {
     return Err(ProgramError::InvalidAccountData);
 }
 ```
@@ -506,7 +580,7 @@ Process multiple operations in a single CPI (saves ~1000 CU per batched operatio
 ```rust
 const IX_HEADER_SIZE: usize = 2; // account_count + data_length
 
-pub fn process_batch(mut accounts: &[AccountInfo], mut data: &[u8]) -> ProgramResult {
+pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramResult {
     loop {
         if data.len() < IX_HEADER_SIZE {
             return Err(ProgramError::InvalidInstructionData);
@@ -548,6 +622,30 @@ pub mod tests;
 ```
 
 See [testing.md](testing.md) for detailed testing patterns with Mollusk and LiteSVM.
+
+## Build & Deployment
+
+### Build Validation
+
+After `cargo build-sbf`:
+- [ ] Check .so file size (>1KB, typically 5-15KB for Pinocchio programs)
+- [ ] Verify file type: `file target/deploy/program.so` should show "ELF 64-bit LSB shared object"
+- [ ] Test regular compilation: `cargo build` should succeed
+- [ ] Run tests: `cargo test` should pass
+
+### Dependency Compatibility Issues
+
+**If SBF build fails with "edition2024" errors:**
+```bash
+# Downgrade problematic dependencies to compatible versions
+cargo update base64ct --precise 1.6.0
+cargo update constant_time_eq --precise 0.4.1
+cargo update blake3 --precise 1.5.5
+```
+
+**When to apply**: Only when encountering Cargo "edition2024" errors during `cargo build-sbf`. These downgrades resolve toolchain compatibility issues while maintaining functionality.
+
+**Note**: These specific versions were tested and verified to work with current Solana toolchain. Regular `cargo update` may pull incompatible versions.
 
 ## Security Checklist
 
