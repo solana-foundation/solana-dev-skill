@@ -67,6 +67,11 @@
 - [Commerce Kit Documentation](https://commercekit.solana.com/)
 - [Kora Documentation](https://docs.kora.network/)
 
+## Gaming
+- [Solana.Unity-SDK](https://github.com/magicblock-labs/Solana.Unity-SDK) | [Docs](https://solana.unity-sdk.gg/)
+- [Unity Test Framework](https://docs.unity3d.com/Packages/com.unity.test-framework@1.4/manual/index.html)
+- [PlaySolana Developers](https://developers.playsolana.com/) | [PlayGate](https://playgate.playsolana.com/)
+
 ## Security
 - [Blueshift Program Security Course](https://learn.blueshift.gg/en/courses/program-security)
 - [Solana Security Best Practices](https://solana.com/docs/programs/security)

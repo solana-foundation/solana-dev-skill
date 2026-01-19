@@ -42,6 +42,7 @@ skill/
 ├── testing.md                  # Testing (LiteSVM/Mollusk/Surfpool)
 ├── idl-codegen.md              # IDL and client generation
 ├── payments.md                 # Payments with Commerce Kit
+├── gaming.md                   # Game developemnt with Unity & Playsolana
 ├── security.md                 # Security vulnerabilities & prevention
 └── resources.md                # Curated reference links
 ```

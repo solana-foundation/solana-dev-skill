@@ -83,5 +83,6 @@ When you implement changes, provide:
 - Testing strategy: [testing.md](testing.md)
 - IDLs + codegen: [idl-codegen.md](idl-codegen.md)
 - Payments: [payments.md](payments.md)
+- Game development: [gaming.md](gaming.md)
 - Security checklist: [security.md](security.md)
 - Reference links: [resources.md](resources.md)
