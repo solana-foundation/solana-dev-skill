@@ -19,13 +19,13 @@ This skill provides Claude Code with deep knowledge of the current Solana develo
 ### Quick Install
 
 ```bash
-npx skills add https://github.com/GuiBibeau/solana-dev-skill
+npx skills add https://github.com/solana-foundation/solana-dev-skill
 ```
 
 ### Manual Install
 
 ```bash
-git clone https://github.com/GuiBibeau/solana-dev-skill
+git clone https://github.com/solana-foundation/solana-dev-skill
 cd solana-dev-skill
 ./install.sh
 ```
