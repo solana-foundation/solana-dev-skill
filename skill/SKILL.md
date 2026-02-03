@@ -76,6 +76,7 @@ When you implement changes, provide:
 - a short "risk notes" section for anything touching signing/fees/CPIs/token transfers
 
 ## Progressive disclosure (read when needed)
+- Solana Kit (@solana/kit) and Kit-compatible Clients: [kit/kit.md](kit/kit.md) — transactions, accounts, codecs, RPC, signers, program clients
 - UI + wallet + hooks: [frontend-framework-kit.md](frontend-framework-kit.md)
 - Kit ↔ web3.js boundary: [kit-web3-interop.md](kit-web3-interop.md)
 - Anchor programs: [programs-anchor.md](programs-anchor.md)
