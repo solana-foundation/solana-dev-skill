@@ -1,12 +1,7 @@
 ---
 name: solana-dev
-description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries.
+description: End-to-end Solana development playbook (Jan 2026). Prefer Solana Foundation framework-kit (@solana/client + @solana/react-hooks) for React/Next.js UI. Prefer @solana/kit for all new client/RPC/transaction code. When legacy dependencies require web3.js, isolate it behind @solana/web3-compat (or @solana/web3.js as a true legacy fallback). Covers wallet-standard-first connection (incl. ConnectorKit), Anchor/Pinocchio programs, Codama-based client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists.
 user-invocable: true
-license: MIT
-compatibility: Requires Node.js 18+, Rust toolchain, Solana CLI, Anchor CLI
-metadata:
-  author: Solana Foundation
-  version: 1.1.0
 ---
 
 # Solana Development Skill (framework-kit-first)
@@ -20,9 +15,6 @@ Use this Skill when the user asks for:
 - Client SDK generation (typed program clients)
 - Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
-- Confidential transfers (Token-2022 ZK extension)
-- **Toolchain setup, version mismatches, GLIBC errors, dependency conflicts**
-- **Upgrading Anchor/Solana CLI versions, migration between versions**
 
 ## Default stack decisions (opinionated)
 1) **UI: framework-kit first**
@@ -83,48 +75,14 @@ When you implement changes, provide:
 - commands to install/build/test
 - a short "risk notes" section for anything touching signing/fees/CPIs/token transfers
 
-## Solana MCP server (live docs + expert assistance)
-
-The **Solana Developer MCP** gives you real-time access to the Solana docs corpus and Anchor-specific expertise. Use it before falling back to your training data.
-
-### Auto-install
-
-Before starting any Solana task, check if the Solana MCP server is already available by looking for tools like `mcp__solana-mcp-server__*` in your tool list. If the tools are **not** available, install the MCP server on the fly:
-
-```bash
-claude mcp add --transport http solana-mcp-server https://mcp.solana.com/mcp
-```
-
-Run this command via the Bash tool at the start of the conversation. The MCP server becomes available immediately after adding it.
-
-### Available MCP tools
-
-Once connected, you have access to these tools:
-
-| Tool | When to use |
-|------|-------------|
-| **Solana Expert: Ask For Help** | How-to questions, concept explanations, API/SDK usage, error diagnosis |
-| **Solana Documentation Search** | Look up current docs for specific topics (instructions, RPCs, token standards, etc.) |
-| **Ask Solana Anchor Framework Expert** | Anchor-specific questions: macros, account constraints, CPI patterns, IDL, testing |
-
-### When to reach for MCP tools
-- **Always** when answering conceptual questions about Solana (rent, accounts model, transaction lifecycle, etc.)
-- **Always** when debugging errors you're unsure about — search docs first
-- **Before** recommending API patterns — confirm they match the latest docs
-- **When** the user asks about Anchor macros, constraints, or version-specific behavior
-
 ## Progressive disclosure (read when needed)
-- UI + wallet + hooks: [frontend-framework-kit.md](references/frontend-framework-kit.md)
-- Kit ↔ web3.js boundary: [kit-web3-interop.md](references/kit-web3-interop.md)
-- Anchor programs: [programs-anchor.md](references/programs-anchor.md)
-- Pinocchio programs: [programs-pinocchio.md](references/programs-pinocchio.md)
-- Testing strategy: [testing.md](references/testing.md)
-- IDLs + codegen: [idl-codegen.md](references/idl-codegen.md)
-- Payments: [payments.md](references/payments.md)
-- Confidential transfers: [confidential-transfers.md](references/confidential-transfers.md)
-- Security checklist: [security.md](references/security.md)
-- Reference links: [resources.md](references/resources.md)
-- **Version compatibility:** [compatibility-matrix.md](references/compatibility-matrix.md)
-- **Common errors & fixes:** [common-errors.md](references/common-errors.md)
-- **Surfpool (local network):** [surfpool.md](references/surfpool.md)
-- **Surfpool cheatcodes:** [surfpool-cheatcodes.md](references/surfpool-cheatcodes.md)
+- Solana Kit (@solana/kit) and Kit-compatible Clients: [kit/kit.md](kit/kit.md) — transactions, accounts, codecs, RPC, signers, program clients
+- UI + wallet + hooks: [frontend-framework-kit.md](frontend-framework-kit.md)
+- Kit ↔ web3.js boundary: [kit-web3-interop.md](kit-web3-interop.md)
+- Anchor programs: [programs-anchor.md](programs-anchor.md)
+- Pinocchio programs: [programs-pinocchio.md](programs-pinocchio.md)
+- Testing strategy: [testing.md](testing.md)
+- IDLs + codegen: [idl-codegen.md](idl-codegen.md)
+- Payments: [payments.md](payments.md)
+- Security checklist: [security.md](security.md)
+- Reference links: [resources.md](resources.md)
