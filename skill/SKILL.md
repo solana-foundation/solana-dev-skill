@@ -15,6 +15,7 @@ Use this Skill when the user asks for:
 - Client SDK generation (typed program clients)
 - Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
+- Confidential transfers (Token-2022 ZK extension)
 
 ## Default stack decisions (opinionated)
 1) **UI: framework-kit first**
@@ -83,5 +84,6 @@ When you implement changes, provide:
 - Testing strategy: [testing.md](testing.md)
 - IDLs + codegen: [idl-codegen.md](idl-codegen.md)
 - Payments: [payments.md](payments.md)
+- Confidential transfers: [confidential-transfers.md](confidential-transfers.md)
 - Security checklist: [security.md](security.md)
 - Reference links: [resources.md](resources.md)
