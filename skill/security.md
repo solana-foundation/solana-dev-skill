@@ -1,291 +1,348 @@
-# Solana Security Checklist (Program + Client)
+# Security on BNB Chain
 
 ## Core Principle
+Assume the attacker controls every input, every external call return value, every transaction ordering, and every flash-loaned amount. Design contracts to be safe even under adversarial conditions.
 
-Assume the attacker controls:
-- Every account passed into an instruction
-- Every instruction argument
-- Transaction ordering (within reason)
-- CPI call graphs (via composability)
+## Top Vulnerability Categories
 
----
+### 1. Reentrancy
+The most critical EVM vulnerability. An external call hands control to untrusted code, which re-enters your contract before state updates complete.
 
-## Vulnerability Categories
-
-### 1. Missing Owner Checks
-
-**Risk**: Attacker creates fake accounts with identical data structure and correct discriminator.
-
-**Attack**: Without owner checks, deserialization succeeds for both legitimate and counterfeit accounts.
-
-**Anchor Prevention**:
-```rust
-// Option 1: Use typed accounts (automatic)
-pub account: Account<'info, ProgramAccount>,
-
-// Option 2: Explicit constraint
-#[account(owner = program_id)]
-pub account: UncheckedAccount<'info>,
-```
-
-**Pinocchio Prevention**:
-```rust
-if !account.is_owned_by(&crate::ID) {
-    return Err(ProgramError::InvalidAccountOwner);
+**Vulnerable pattern:**
+```solidity
+// BAD: State update after external call
+function withdraw(uint256 amount) external {
+    require(balances[msg.sender] >= amount);
+    (bool ok,) = msg.sender.call{value: amount}("");
+    require(ok);
+    balances[msg.sender] -= amount; // Too late — attacker already re-entered
 }
 ```
 
----
+**Prevention:**
+```solidity
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-### 2. Missing Signer Checks
-
-**Risk**: Any account can perform operations that should be restricted to specific authorities.
-
-**Attack**: Attacker locates target account, extracts owner pubkey, constructs transaction using real owner's address without their signature.
-
-**Anchor Prevention**:
-```rust
-// Option 1: Use Signer type
-pub authority: Signer<'info>,
-
-// Option 2: Explicit constraint
-#[account(signer)]
-pub authority: UncheckedAccount<'info>,
-
-// Option 3: Manual check
-if !ctx.accounts.authority.is_signer {
-    return Err(ProgramError::MissingRequiredSignature);
-}
-```
-
-**Pinocchio Prevention**:
-```rust
-if !self.accounts.authority.is_signer() {
-    return Err(ProgramError::MissingRequiredSignature);
-}
-```
-
----
-
-### 3. Arbitrary CPI Attacks
-
-**Risk**: Program blindly calls whatever program is passed as parameter, becoming a proxy for malicious code.
-
-**Attack**: Attacker substitutes malicious program mimicking expected interface (e.g., fake SPL Token that reverses transfers).
-
-**Anchor Prevention**:
-```rust
-// Use typed Program accounts
-pub token_program: Program<'info, Token>,
-
-// Or explicit validation
-if ctx.accounts.token_program.key() != &spl_token::ID {
-    return Err(ProgramError::IncorrectProgramId);
-}
-```
-
-**Pinocchio Prevention**:
-```rust
-if self.accounts.token_program.key() != &pinocchio_token::ID {
-    return Err(ProgramError::IncorrectProgramId);
-}
-```
-
----
-
-### 4. Reinitialization Attacks
-
-**Risk**: Calling initialization functions on already-initialized accounts overwrites existing data.
-
-**Attack**: Attacker reinitializes account to become new owner, then drains controlled assets.
-
-**Anchor Prevention**:
-```rust
-// Use init constraint (automatic protection)
-#[account(init, payer = payer, space = 8 + Data::LEN)]
-pub account: Account<'info, Data>,
-
-// Manual check if needed
-if ctx.accounts.account.is_initialized {
-    return Err(ProgramError::AccountAlreadyInitialized);
-}
-```
-
-**Critical**: Avoid `init_if_needed` - it permits reinitialization.
-
-**Pinocchio Prevention**:
-```rust
-// Check discriminator before initialization
-let data = account.try_borrow_data()?;
-if data[0] == ACCOUNT_DISCRIMINATOR {
-    return Err(ProgramError::AccountAlreadyInitialized);
-}
-```
-
----
-
-### 5. PDA Sharing Vulnerabilities
-
-**Risk**: Same PDA used across multiple users enables unauthorized access.
-
-**Attack**: Shared PDA authority becomes "master key" unlocking multiple users' assets.
-
-**Vulnerable Pattern**:
-```rust
-// BAD: Only mint in seeds - all vaults for same token share authority
-seeds = [b"pool", pool.mint.as_ref()]
-```
-
-**Secure Pattern**:
-```rust
-// GOOD: Include user-specific identifiers
-seeds = [b"pool", vault.key().as_ref(), owner.key().as_ref()]
-```
-
----
-
-### 6. Type Cosplay Attacks
-
-**Risk**: Accounts with identical data structures but different purposes can be substituted.
-
-**Attack**: Attacker passes controlled account type as different type parameter, bypassing authorization.
-
-**Prevention**: Use discriminators to distinguish account types.
-
-**Anchor**: Automatic 8-byte discriminator with `#[account]` macro.
-
-**Pinocchio**:
-```rust
-// Validate discriminator before processing
-let data = account.try_borrow_data()?;
-if data[0] != EXPECTED_DISCRIMINATOR {
-    return Err(ProgramError::InvalidAccountData);
-}
-```
-
----
-
-### 7. Duplicate Mutable Accounts
-
-**Risk**: Passing same account twice causes program to overwrite its own changes.
-
-**Attack**: Sequential mutations on identical accounts cancel earlier changes.
-
-**Prevention**:
-```rust
-// Anchor
-if ctx.accounts.account_1.key() == ctx.accounts.account_2.key() {
-    return Err(ProgramError::InvalidArgument);
-}
-
-// Pinocchio
-if self.accounts.account_1.key() == self.accounts.account_2.key() {
-    return Err(ProgramError::InvalidArgument);
-}
-```
-
----
-
-### 8. Revival Attacks
-
-**Risk**: Closed accounts can be restored within same transaction by refunding lamports.
-
-**Attack**: Multi-instruction transaction drains account, refunds rent, exploits "closed" account.
-
-**Secure Closure Pattern**:
-```rust
-// Anchor: Use close constraint
-#[account(mut, close = destination)]
-pub account: Account<'info, Data>,
-
-// Pinocchio: Full secure closure
-pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult {
-    // 1. Mark as closed
-    {
-        let mut data = account.try_borrow_mut_data()?;
-        data[0] = 0xff; // Closed discriminator
+contract Vault is ReentrancyGuard {
+    // Option A: Checks-Effects-Interactions pattern
+    function withdraw(uint256 amount) external {
+        require(balances[msg.sender] >= amount);   // Check
+        balances[msg.sender] -= amount;             // Effect
+        (bool ok,) = msg.sender.call{value: amount}(""); // Interaction
+        require(ok);
     }
 
-    // 2. Transfer lamports
-    *destination.try_borrow_mut_lamports()? += *account.try_borrow_lamports()?;
+    // Option B: ReentrancyGuard (belt + suspenders)
+    function withdrawSafe(uint256 amount) external nonReentrant {
+        require(balances[msg.sender] >= amount);
+        balances[msg.sender] -= amount;
+        (bool ok,) = msg.sender.call{value: amount}("");
+        require(ok);
+    }
 
-    // 3. Shrink and close
-    account.realloc(1, true)?;
-    account.close()
+    // Option C: Transient storage lock (Solidity 0.8.24+, Cancun)
+    // Uses EIP-1153 tstore/tload for gas-efficient reentrancy guard
 }
 ```
 
----
+**Cross-contract reentrancy** — also guard against reentry through a different function or contract that shares state (read-only reentrancy).
 
-### 9. Data Matching Vulnerabilities
+### 2. Flash Loan Attacks
+Attacker borrows massive funds in a single tx to manipulate prices, governance, or collateral.
 
-**Risk**: Correct type/ownership validation but incorrect assumptions about data relationships.
+**Prevention:**
+```solidity
+// Use time-weighted average prices (TWAP), not spot prices
+// Chainlink oracles for price feeds
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-**Attack**: Signer matches transaction but not stored owner field.
+function getPrice(address feed) internal view returns (uint256) {
+    AggregatorV3Interface oracle = AggregatorV3Interface(feed);
+    (, int256 price,, uint256 updatedAt,) = oracle.latestRoundData();
+    require(price > 0, "Invalid price");
+    require(block.timestamp - updatedAt < 3600, "Stale price");
+    return uint256(price);
+}
 
-**Prevention**:
-```rust
-// Anchor: has_one constraint
-#[account(has_one = authority)]
-pub account: Account<'info, Data>,
+// Never use AMM spot prices for collateral valuation
+// Never use single-block balanceOf snapshots for governance weight
+```
 
-// Pinocchio: Manual validation
-let data = Config::from_bytes(&account.try_borrow_data()?)?;
-if data.authority != *authority.key() {
-    return Err(ProgramError::InvalidAccountData);
+### 3. Access Control Failures
+Missing or incorrect access control on privileged functions.
+
+**Prevention:**
+```solidity
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+
+contract Protocol is AccessControl {
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
+    constructor() {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+    }
+
+    function emergencyPause() external onlyRole(ADMIN_ROLE) { ... }
+    function updateFee(uint256 fee) external onlyRole(OPERATOR_ROLE) { ... }
 }
 ```
 
----
+**Common mistakes:**
+- Using `tx.origin` instead of `msg.sender` for auth
+- Missing `onlyOwner` on sensitive functions
+- Initializer not protected in upgradeable contracts
+- Default visibility is `internal` for state vars but `public` for functions in older Solidity
 
-## Program-Side Checklist
+### 4. Integer Overflow/Underflow
+Solidity ^0.8.0 has built-in overflow checks, but `unchecked` blocks bypass them.
 
-### Account Validation
-- [ ] Validate account owners match expected program
-- [ ] Validate signer requirements explicitly
-- [ ] Validate writable requirements explicitly
-- [ ] Validate PDAs match expected seeds + bump
-- [ ] Validate token mint ↔ token account relationships
-- [ ] Validate rent exemption / initialization status
-- [ ] Check for duplicate mutable accounts
+```solidity
+// Safe by default in Solidity >=0.8.0
+uint256 result = a + b; // Reverts on overflow
 
-### CPI Safety
-- [ ] Validate program IDs before CPIs (no arbitrary CPI)
-- [ ] Do not pass extra writable or signer privileges to callees
-- [ ] Ensure invoke_signed seeds are correct and canonical
+// Dangerous: unchecked arithmetic
+unchecked {
+    uint256 result = a - b; // Wraps on underflow!
+}
+// Only use unchecked when you can mathematically prove safety
+```
 
-### Arithmetic and Invariants
-- [ ] Use checked math (`checked_add`, `checked_sub`, `checked_mul`, `checked_div`)
-- [ ] Avoid unchecked casts
-- [ ] Re-validate state after CPIs when required
+**Watch for:**
+- Division truncation: `7 / 2 = 3` (not 3.5)
+- Multiplication before division to preserve precision
+- Phantom overflow in intermediate calculations
 
-### State Lifecycle
-- [ ] Close accounts securely (mark discriminator, drain lamports)
-- [ ] Avoid leaving "zombie" accounts with lamports
-- [ ] Gate upgrades and ownership transfers
-- [ ] Prevent reinitialization of existing accounts
+### 5. Approval and Permit Exploits
 
----
+**Infinite approval risk:**
+```solidity
+// BAD: User approves MAX_UINT — if contract is exploited, all tokens at risk
+token.approve(spender, type(uint256).max);
 
-## Client-Side Checklist
+// BETTER: Approve only what's needed
+token.approve(spender, exactAmount);
 
-- [ ] Cluster awareness: never hardcode mainnet endpoints in dev flows
-- [ ] Simulate transactions for UX where feasible
-- [ ] Handle blockhash expiry and retry with fresh blockhash
-- [ ] Treat "signature received" as not-final; track confirmation
-- [ ] Never assume token program variant; detect Token-2022 vs classic
-- [ ] Validate transaction simulation results before signing
-- [ ] Show clear error messages for common failure modes
+// BEST: Use permit (EIP-2612) for single-tx approve + action
+// No standing approval on-chain
+```
 
----
+**Front-running approval changes:**
+```solidity
+// BAD: Changing approval from 100 to 50 allows front-run to spend 150
+token.approve(spender, 50);
 
-## Security Review Questions
+// SAFE: Reset to 0 first, or use increaseAllowance/decreaseAllowance
+token.approve(spender, 0);
+token.approve(spender, 50);
+```
 
-1. Can an attacker pass a fake account that passes validation?
-2. Can an attacker call this instruction without proper authorization?
-3. Can an attacker substitute a malicious program for CPI targets?
-4. Can an attacker reinitialize an existing account?
-5. Can an attacker exploit shared PDAs across users?
-6. Can an attacker pass the same account for multiple parameters?
-7. Can an attacker revive a closed account in the same transaction?
-8. Can an attacker exploit mismatches between stored and provided data?
+### 6. Oracle Manipulation
+Attackers manipulate price oracles to exploit lending, liquidation, or swap logic.
+
+**Prevention checklist:**
+- Use Chainlink price feeds as primary oracle (BSC has extensive coverage)
+- Use TWAP from PancakeSwap v3 as secondary/fallback
+- Set staleness thresholds on oracle data
+- Add circuit breakers for extreme price movements
+- Never rely on `balanceOf` or AMM reserves as price feeds
+
+### 7. Frontrunning and MEV
+On BSC, validators and searchers can reorder, insert, or censor transactions.
+
+**Prevention:**
+```solidity
+// Commit-reveal for sensitive operations
+function commitAction(bytes32 hash) external {
+    commits[msg.sender] = Commit(hash, block.number);
+}
+
+function revealAction(uint256 value, bytes32 salt) external {
+    Commit memory c = commits[msg.sender];
+    require(block.number > c.blockNumber, "Same block");
+    require(keccak256(abi.encodePacked(value, salt)) == c.hash, "Bad reveal");
+    // Execute action
+}
+
+// Slippage protection for swaps
+function swap(uint256 amountIn, uint256 minAmountOut, uint256 deadline) external {
+    require(block.timestamp <= deadline, "Expired");
+    uint256 amountOut = _doSwap(amountIn);
+    require(amountOut >= minAmountOut, "Slippage");
+}
+```
+
+### 8. Proxy and Upgrade Vulnerabilities
+
+**Storage collision:**
+```solidity
+// BAD: New variable between existing ones
+contract V2 is V1 {
+    uint256 newVar; // COLLISION — overwrites V1 storage
+}
+
+// GOOD: Only append new storage at the end
+contract V2 is V1 {
+    // All V1 storage preserved
+    uint256 newVar; // Appended after V1 storage
+}
+
+// BEST: Use ERC-7201 namespaced storage (OpenZeppelin v5)
+```
+
+**Uninitialized proxy:**
+```solidity
+// ALWAYS disable initializers in implementation constructor
+constructor() {
+    _disableInitializers();
+}
+```
+
+**Function selector clashing:**
+- UUPS: Implementation upgrade logic lives in implementation (preferred)
+- Transparent: Admin proxy handles upgrades, no selector clash risk
+- Diamond/EIP-2535: For complex multi-facet systems
+
+### 9. Denial of Service (DoS)
+
+**Unbounded loops:**
+```solidity
+// BAD: Iterating over unbounded array
+function distributeAll() external {
+    for (uint i = 0; i < recipients.length; i++) {
+        token.transfer(recipients[i], amounts[i]);
+    }
+}
+
+// GOOD: Batch with limits or pull pattern
+function distribute(uint256 start, uint256 end) external {
+    require(end <= recipients.length && end - start <= 100);
+    for (uint i = start; i < end; i++) {
+        token.transfer(recipients[i], amounts[i]);
+    }
+}
+
+// BEST: Pull pattern
+function claim() external {
+    uint256 amount = claimable[msg.sender];
+    require(amount > 0);
+    claimable[msg.sender] = 0;
+    token.transfer(msg.sender, amount);
+}
+```
+
+**External call failure DoS:**
+```solidity
+// BAD: One failed transfer blocks all
+for (uint i = 0; i < users.length; i++) {
+    (bool ok,) = users[i].call{value: amounts[i]}("");
+    require(ok); // One revert blocks everything
+}
+
+// GOOD: Track failures, allow retry
+for (uint i = 0; i < users.length; i++) {
+    (bool ok,) = users[i].call{value: amounts[i]}("");
+    if (!ok) {
+        pendingWithdrawals[users[i]] += amounts[i];
+    }
+}
+```
+
+### 10. Signature Replay
+Reusing signed messages across chains, contracts, or time.
+
+```solidity
+// Include domain separator (EIP-712)
+bytes32 public constant DOMAIN_TYPEHASH = keccak256(
+    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+);
+
+// Include nonce to prevent replay
+mapping(address => uint256) public nonces;
+
+function executeWithSig(
+    address user,
+    uint256 amount,
+    uint256 nonce,
+    uint256 deadline,
+    bytes calldata signature
+) external {
+    require(block.timestamp <= deadline, "Expired");
+    require(nonce == nonces[user]++, "Invalid nonce");
+    bytes32 hash = _hashTypedDataV4(keccak256(abi.encode(
+        ACTION_TYPEHASH, user, amount, nonce, deadline
+    )));
+    require(SignatureChecker.isValidSignatureNow(user, hash, signature));
+    // Execute
+}
+```
+
+## BSC-Specific Security Considerations
+
+### Validator-related risks
+- BSC has 21 active validators — smaller set than Ethereum
+- Block proposers can reorder transactions within a block
+- Use private RPCs (Blocker, MEV Blocker) for sensitive transactions
+
+### Token-specific risks on BSC
+- Many BSC tokens have hidden fees (transfer tax), owner minting, or blacklisting
+- Always check token contract before integration: `transferFrom` may not transfer exact amounts
+- Watch for tokens with `_beforeTokenTransfer` hooks that can block transfers
+- BUSD is deprecated — use USDT or USDC on BSC
+
+### Bridge-related risks
+- Verify bridge message authenticity (check source chain, sender, nonce)
+- Implement rate limits on bridged assets
+- Use timelocks for large bridge withdrawals
+- Never trust bridge messages without on-chain proof verification
+
+## Security Checklists
+
+### Smart contract checklist
+- [ ] Reentrancy guards on all external-call functions
+- [ ] Access control on all privileged functions
+- [ ] Input validation (zero address, zero amount, bounds)
+- [ ] Safe math where `unchecked` is used (prove correctness)
+- [ ] Oracle staleness checks and fallback logic
+- [ ] Slippage and deadline protection on swaps
+- [ ] EIP-712 + nonce for signed messages
+- [ ] Events emitted for all state changes
+- [ ] Upgradeable storage layout is append-only
+- [ ] Initialize functions protected and called once
+- [ ] No `selfdestruct` (deprecated) or `delegatecall` to untrusted targets
+- [ ] Token transfer return values checked (use SafeERC20)
+
+### Deployment checklist
+- [ ] Deploy to testnet first, test all flows
+- [ ] Verify source code on BscScan / opBNBScan
+- [ ] Multisig or timelock as contract owner (not EOA)
+- [ ] Emergency pause functionality
+- [ ] Monitor with alerts (Tenderly, OpenZeppelin Defender, Forta)
+- [ ] Run Slither and Aderyn static analysis before deployment
+- [ ] Consider professional audit for contracts holding user funds
+
+### Client-side checklist
+- [ ] Validate chain ID before submitting transactions
+- [ ] Show token approvals explicitly to user
+- [ ] Simulate transactions before broadcasting (eth_call)
+- [ ] Handle RPC failures gracefully (retry with backoff)
+- [ ] Use EIP-1559 gas pricing (BSC supports it)
+- [ ] Set reasonable gas limits (don't use block gas limit)
+- [ ] Display transaction details before wallet signature prompt
+
+## Static Analysis Tools
+```bash
+# Slither (comprehensive)
+pip install slither-analyzer
+slither . --config-file slither.config.json
+
+# Aderyn (Rust-based, fast)
+aderyn .
+
+# Mythril (symbolic execution)
+myth analyze src/Contract.sol
+
+# Foundry built-in
+forge inspect MyContract storage-layout  # Check storage layout
+```

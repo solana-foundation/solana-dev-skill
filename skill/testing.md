@@ -1,349 +1,391 @@
-# Testing Strategy (LiteSVM / Mollusk / Surfpool)
+# Testing on BNB Chain
 
-## Testing Pyramid
+## Testing Strategy Overview
 
-1. **Unit tests (fast)**: LiteSVM or Mollusk
-2. **Integration tests (realistic state)**: Surfpool
-3. **Cluster smoke tests**: devnet/testnet/mainnet as needed
+| Test Type | Tool | Speed | When to Use |
+|-----------|------|-------|-------------|
+| Unit | Foundry `forge test` | Fastest | Pure logic, math, access control |
+| Fuzz | Foundry fuzz | Fast | Edge cases, numeric boundaries |
+| Invariant | Foundry invariant | Medium | Protocol invariants, state properties |
+| Fork | Foundry fork | Medium | Real mainnet state, protocol interactions |
+| Integration | Hardhat scripts | Slower | Complex deploy pipelines, TypeScript |
+| E2E | Cypress/Playwright + wagmi | Slowest | Full dApp user flows |
 
-## LiteSVM
+## Foundry Testing (Preferred)
 
-A lightweight Solana Virtual Machine that runs directly in your test process. Created by Aursen from Exotic Markets.
+### Basic test structure
+```solidity
+// test/MyToken.t.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.25;
 
-### When to Use LiteSVM
+import {Test, console} from "forge-std/Test.sol";
+import {MyToken} from "../src/MyToken.sol";
 
-- Fast execution without validator overhead
-- Direct account state manipulation
-- Built-in performance profiling
-- Multi-language support (Rust, TypeScript, Python)
+contract MyTokenTest is Test {
+    MyToken token;
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
 
-### Rust Setup
+    function setUp() public {
+        token = new MyToken();
+        // Fund test accounts
+        deal(address(token), alice, 1000e18);
+        vm.deal(alice, 10 ether);
+    }
 
-```bash
-cargo add --dev litesvm
-```
+    function test_transfer() public {
+        vm.prank(alice);
+        token.transfer(bob, 100e18);
+        assertEq(token.balanceOf(bob), 100e18);
+        assertEq(token.balanceOf(alice), 900e18);
+    }
 
-```rust
-use litesvm::LiteSVM;
-use solana_sdk::{pubkey::Pubkey, signature::Keypair, transaction::Transaction};
-
-#[test]
-fn test_deposit() {
-    let mut svm = LiteSVM::new();
-
-    // Load your program
-    let program_id = pubkey!("YourProgramId11111111111111111111111111111");
-    svm.add_program_from_file(program_id, "target/deploy/program.so");
-
-    // Create accounts
-    let payer = Keypair::new();
-    svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();
-
-    // Build and send transaction
-    let tx = Transaction::new_signed_with_payer(
-        &[/* instructions */],
-        Some(&payer.pubkey()),
-        &[&payer],
-        svm.latest_blockhash(),
-    );
-
-    let result = svm.send_transaction(tx);
-    assert!(result.is_ok());
+    function test_revert_transferInsufficientBalance() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        token.transfer(bob, 2000e18);
+    }
 }
 ```
 
-### TypeScript Setup
-
+### Run tests
 ```bash
-npm i --save-dev litesvm
+# Run all tests
+forge test
+
+# Verbose (show logs)
+forge test -vvv
+
+# Match specific test
+forge test --match-test test_transfer
+
+# Match specific contract
+forge test --match-contract MyTokenTest
+
+# Gas report
+forge test --gas-report
+
+# Watch mode
+forge test --watch
 ```
 
-```typescript
-import { LiteSVM } from 'litesvm';
-import { PublicKey, Transaction, Keypair } from '@solana/web3.js';
+### Cheat codes (most used for BSC development)
 
-const programId = new PublicKey("YourProgramId11111111111111111111111111111");
-const svm = new LiteSVM();
-svm.addProgramFromFile(programId, "target/deploy/program.so");
+```solidity
+// Impersonate an account
+vm.prank(alice);                    // Next call only
+vm.startPrank(alice);               // Until stopPrank
 
-// Build transaction
-const tx = new Transaction();
-tx.recentBlockhash = svm.latestBlockhash();
-tx.add(/* instructions */);
-tx.sign(payer);
+// Set block properties
+vm.warp(block.timestamp + 1 days);  // Advance time
+vm.roll(block.number + 100);        // Advance blocks
 
-// Simulate first (optional)
-const simulation = svm.simulateTransaction(tx);
+// Set ETH/BNB balance
+vm.deal(alice, 100 ether);
 
-// Execute
-const result = svm.sendTransaction(tx);
-```
+// Set token balance (storage slot manipulation)
+deal(address(token), alice, 1000e18);
 
-### Account Types in LiteSVM
+// Expect revert
+vm.expectRevert();
+vm.expectRevert("Insufficient balance");
+vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, 100, 200));
 
-**System Accounts:**
-- Payer accounts (contain lamports)
-- Uninitialized accounts (empty, awaiting setup)
+// Expect emit
+vm.expectEmit(true, true, false, true);
+emit Transfer(alice, bob, 100e18);
 
-**Program Accounts:**
-- Serialize with `borsh`, `bincode`, or `solana_program_pack`
-- Calculate rent-exempt minimum balance
+// Snapshot and revert state
+uint256 snapshot = vm.snapshot();
+// ... modify state ...
+vm.revertTo(snapshot);
 
-**Token Accounts:**
-- Use `spl_token::state::Mint` and `spl_token::state::Account`
-- Serialize with Pack trait
+// Label addresses (for traces)
+vm.label(alice, "Alice");
+vm.label(address(token), "MyToken");
 
-### Advanced LiteSVM Features
-
-```rust
-// Modify clock sysvar
-svm.set_sysvar(&Clock { slot: 1000, .. });
-
-// Warp to slot
-svm.warp_to_slot(5000);
-
-// Configure compute budget
-svm.set_compute_budget(ComputeBudget { max_units: 400_000, .. });
-
-// Toggle signature verification (useful for testing)
-svm.with_sigverify(false);
-
-// Check compute units used
-let result = svm.send_transaction(tx)?;
-println!("CUs used: {}", result.compute_units_consumed);
-```
-
-## Mollusk
-
-A lightweight test harness providing direct interface to program execution without full validator runtime. Best for Rust-only testing with fine-grained control.
-
-### When to Use Mollusk
-
-- Fast execution for rapid development cycles
-- Precise account state manipulation for edge cases
-- Detailed performance metrics and CU benchmarking
-- Custom syscall testing
-
-### Setup
-
-```bash
-cargo add --dev mollusk-svm
-cargo add --dev mollusk-svm-programs-token  # For SPL token helpers
-cargo add --dev solana-sdk solana-program
-```
-
-### Basic Usage
-
-```rust
-use mollusk_svm::Mollusk;
-use mollusk_svm::result::Check;
-use solana_sdk::{account::Account, pubkey::Pubkey, instruction::Instruction};
-
-#[test]
-fn test_instruction() {
-    let program_id = Pubkey::new_unique();
-    let mollusk = Mollusk::new(&program_id, "target/deploy/program");
-
-    // Create accounts
-    let payer = (
-        Pubkey::new_unique(),
-        Account {
-            lamports: 1_000_000_000,
-            data: vec![],
-            owner: solana_sdk::system_program::ID,
-            executable: false,
-            rent_epoch: 0,
-        },
-    );
-
-    // Build instruction
-    let instruction = Instruction {
-        program_id,
-        accounts: vec![/* account metas */],
-        data: vec![/* instruction data */],
-    };
-
-    // Execute with validation
-    mollusk.process_and_validate_instruction(
-        &instruction,
-        &[payer],
-        &[
-            Check::success(),
-            Check::compute_units(50_000),
-        ],
-    );
-}
-```
-
-### Token Program Helpers
-
-```rust
-use mollusk_svm_programs_token::token;
-
-// Add token program to test environment
-token::add_program(&mut mollusk);
-
-// Create pre-configured token accounts
-let mint_account = token::mint_account(decimals, supply, mint_authority);
-let token_account = token::token_account(mint, owner, amount);
-```
-
-### CU Benchmarking
-
-```rust
-use mollusk_svm::MolluskComputeUnitBencher;
-
-let bencher = MolluskComputeUnitBencher::new(mollusk)
-    .must_pass(true)
-    .out_dir("../target/benches");
-
-bencher.bench(
-    "deposit_instruction",
-    &instruction,
-    &accounts,
+// Mock calls
+vm.mockCall(
+    address(oracle),
+    abi.encodeWithSelector(oracle.getPrice.selector),
+    abi.encode(3000e8)
 );
-// Generates markdown report with CU usage and deltas
 ```
 
-### Advanced Configuration
+### Fuzz testing
+```solidity
+function testFuzz_transfer(uint256 amount) public {
+    // Bound inputs to valid range
+    amount = bound(amount, 1, token.balanceOf(alice));
 
-```rust
-// Set compute budget
-mollusk.set_compute_budget(200_000);
+    vm.prank(alice);
+    token.transfer(bob, amount);
 
-// Enable all feature flags
-mollusk.set_feature_set(FeatureSet::all_enabled());
-
-// Customize sysvars
-mollusk.sysvars.clock = Clock {
-    slot: 1000,
-    epoch: 5,
-    unix_timestamp: 1700000000,
-    ..Default::default()
-};
+    assertEq(token.balanceOf(bob), amount);
+    assertEq(token.balanceOf(alice), 1000e18 - amount);
+}
 ```
-
-## Surfpool
-
-SDK and tooling suite for integration testing with realistic cluster state. Surfnet is the local network component (drop-in replacement for solana-test-validator).
-
-### When to Use Surfpool
-
-- Complex CPIs requiring mainnet programs (e.g., Jupiter with 40+ accounts)
-- Testing against realistic account state
-- Time travel and block manipulation
-- Account/program cloning between environments
-
-### Setup
 
 ```bash
-# Install Surfpool CLI
-cargo install surfpool
+# Run with more fuzz runs
+forge test --fuzz-runs 10000
 
-# Start local Surfnet
-surfpool start
+# Set in foundry.toml
+# [fuzz]
+# runs = 1000
+# max_test_rejects = 65536
+# seed = "0x1234"
 ```
 
-### Connection Setup
+### Invariant testing
+```solidity
+// test/invariants/VaultInvariant.t.sol
+contract VaultInvariantTest is Test {
+    Vault vault;
+    VaultHandler handler;
 
+    function setUp() public {
+        vault = new Vault();
+        handler = new VaultHandler(vault);
+
+        // Tell Foundry to only call handler functions
+        targetContract(address(handler));
+    }
+
+    // This must ALWAYS hold
+    function invariant_totalAssetsEqualBalance() public view {
+        assertEq(
+            vault.totalAssets(),
+            address(vault).balance
+        );
+    }
+
+    function invariant_noUserExceedsDeposit() public view {
+        // Check per-user invariants
+    }
+}
+
+// Handler defines valid actions
+contract VaultHandler is Test {
+    Vault vault;
+    address[] users;
+
+    constructor(Vault _vault) {
+        vault = _vault;
+        users.push(makeAddr("user1"));
+        users.push(makeAddr("user2"));
+    }
+
+    function deposit(uint256 userIdx, uint256 amount) external {
+        userIdx = bound(userIdx, 0, users.length - 1);
+        amount = bound(amount, 0.01 ether, 100 ether);
+
+        address user = users[userIdx];
+        vm.deal(user, amount);
+        vm.prank(user);
+        vault.deposit{value: amount}();
+    }
+
+    function withdraw(uint256 userIdx, uint256 amount) external {
+        userIdx = bound(userIdx, 0, users.length - 1);
+        address user = users[userIdx];
+        uint256 maxWithdraw = vault.balanceOf(user);
+        if (maxWithdraw == 0) return;
+        amount = bound(amount, 1, maxWithdraw);
+
+        vm.prank(user);
+        vault.withdraw(amount);
+    }
+}
+```
+
+```toml
+# foundry.toml
+[invariant]
+runs = 256
+depth = 128
+fail_on_revert = false
+```
+
+## Fork Testing (BSC Mainnet)
+
+### Fork against BSC mainnet
+```solidity
+contract ForkTest is Test {
+    // Real BSC mainnet addresses
+    address constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    address constant PANCAKE_ROUTER = 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4;
+    address constant USDT = 0x55d398326f99059fF775485246999027B3197955;
+
+    function setUp() public {
+        // Fork is set via CLI or foundry.toml
+        // Tests run against real BSC state
+    }
+
+    function test_swapOnPancakeSwap() public {
+        address whale = 0x...; // Known BNB whale
+        vm.prank(whale);
+        // Test real swap on PancakeSwap
+    }
+}
+```
+
+```bash
+# Run fork test
+forge test --fork-url https://bsc-dataseed1.binance.org --match-contract ForkTest
+
+# Pin to specific block for reproducibility
+forge test --fork-url $BSC_RPC --fork-block-number 35000000
+
+# Cache fork state for faster reruns
+forge test --fork-url $BSC_RPC --fork-block-number 35000000
+# Foundry auto-caches in ~/.foundry/cache/rpc/
+```
+
+### Fork testing for opBNB
+```bash
+# Fork opBNB mainnet
+forge test --fork-url https://opbnb-mainnet-rpc.bnbchain.org --match-contract OpBNBForkTest
+```
+
+## Hardhat Testing (TypeScript)
+
+### Test structure
 ```typescript
-import { Connection } from '@solana/web3.js';
+// test/MyToken.test.ts
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 
-const connection = new Connection("http://localhost:8899", "confirmed");
+describe("MyToken", function () {
+  async function deployFixture() {
+    const [owner, alice, bob] = await ethers.getSigners();
+    const Token = await ethers.getContractFactory("MyToken");
+    const token = await Token.deploy();
+    return { token, owner, alice, bob };
+  }
+
+  it("should transfer tokens", async function () {
+    const { token, owner, alice } = await loadFixture(deployFixture);
+    await token.transfer(alice.address, ethers.parseEther("100"));
+    expect(await token.balanceOf(alice.address)).to.equal(
+      ethers.parseEther("100")
+    );
+  });
+
+  it("should revert on insufficient balance", async function () {
+    const { token, alice, bob } = await loadFixture(deployFixture);
+    await expect(
+      token.connect(alice).transfer(bob.address, ethers.parseEther("1"))
+    ).to.be.reverted;
+  });
+});
 ```
 
-### System Variable Control
+```bash
+npx hardhat test
+npx hardhat test --grep "transfer"
+```
 
+### Hardhat fork testing
 ```typescript
-// Time travel to specific slot
-await connection._rpcRequest('surfnet_timeTravel', [{
-    absoluteSlot: 250000000
-}]);
-
-// Pause/resume block production
-await connection._rpcRequest('surfnet_pauseClock', []);
-await connection._rpcRequest('surfnet_resumeClock', []);
+// hardhat.config.ts
+networks: {
+  hardhat: {
+    forking: {
+      url: "https://bsc-dataseed1.binance.org",
+      blockNumber: 35000000,
+    },
+  },
+}
 ```
 
-### Account Manipulation
+## Coverage
 
-```typescript
-// Set account state
-await connection._rpcRequest('surfnet_setAccount', [{
-    pubkey: accountPubkey.toString(),
-    lamports: 1000000000,
-    data: Buffer.from(accountData).toString('base64'),
-    owner: programId.toString(),
-}]);
+### Foundry coverage
+```bash
+# Generate coverage report
+forge coverage
 
-// Set token account
-await connection._rpcRequest('surfnet_setTokenAccount', [{
-    pubkey: ownerPubkey.toString(),        // Owner of the token account (wallet)
-    mint: mintPubkey.toString(),
-    owner: ownerPubkey.toString(),
-    amount: "1000000",
-}]);
+# Generate lcov report
+forge coverage --report lcov
 
-// Clone account from another program
-await connection._rpcRequest('surfnet_cloneProgramAccount', [{
-    source: sourceProgramId.toString(),
-    destination: destProgramId.toString(),
-    account: accountPubkey.toString(),
-}]);
+# View in browser (with genhtml)
+genhtml lcov.info -o coverage --branch-coverage
+open coverage/index.html
 ```
 
-### SOL Supply Configuration
-
-```typescript
-// Configure supply for economic edge case testing
-await connection._rpcRequest('surfnet_setSupply', [{
-    circulating: "500000000000000000",
-    nonCirculating: "100000000000000000",
-    total: "600000000000000000",
-}]);
+### Hardhat coverage
+```bash
+npx hardhat coverage
 ```
 
-## Test Layout Recommendation
-
+## Test Directory Structure
 ```
-tests/
-├── unit/
-│   ├── deposit.rs      # LiteSVM or Mollusk
-│   ├── withdraw.rs
-│   └── mod.rs
-├── integration/
-│   ├── full_flow.rs    # Surfpool
-│   └── mod.rs
-└── fixtures/
-    └── accounts.rs     # Shared test account setup
+test/
+├── unit/                    # Pure unit tests
+│   ├── MyToken.t.sol
+│   └── Vault.t.sol
+├── integration/             # Multi-contract interactions
+│   └── VaultWithOracle.t.sol
+├── fork/                    # Fork tests against live state
+│   ├── PancakeSwapFork.t.sol
+│   └── VenusFork.t.sol
+├── invariants/              # Invariant/stateful tests
+│   ├── VaultInvariant.t.sol
+│   └── handlers/
+│       └── VaultHandler.sol
+├── fuzz/                    # Dedicated fuzz campaigns
+│   └── MathFuzz.t.sol
+└── helpers/                 # Shared test utilities
+    ├── Constants.sol
+    └── Assertions.sol
 ```
 
-## CI Guidance
+## CI Configuration
 
+### GitHub Actions
 ```yaml
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run unit tests
-        run: cargo test-sbf
+name: Tests
+on: [push, pull_request]
 
-  integration-tests:
+jobs:
+  foundry:
     runs-on: ubuntu-latest
-    needs: unit-tests
     steps:
       - uses: actions/checkout@v4
-      - name: Start Surfpool
-        run: surfpool start --background
-      - name: Run integration tests
-        run: cargo test --test integration
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge build
+      - run: forge test -vvv
+      - run: forge coverage --report lcov
+      - uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+
+  fork-tests:
+    runs-on: ubuntu-latest
+    needs: foundry
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge test --fork-url ${{ secrets.BSC_RPC_URL }} --match-path "test/fork/*" -vvv
 ```
 
-## Best Practices
+## Gas Snapshots
+```bash
+# Generate gas snapshot
+forge snapshot
 
-- Keep unit tests as the default CI gate (fast feedback)
-- Use deterministic PDAs and seeded keypairs for reproducibility
-- Minimize fixtures; prefer programmatic account creation
-- Profile CU usage during development to catch regressions
-- Run integration tests in separate CI stage to control runtime
+# Compare against previous snapshot
+forge snapshot --check
+
+# Diff format
+forge snapshot --diff .gas-snapshot
+```
+
+Commit `.gas-snapshot` to track gas regression across PRs.

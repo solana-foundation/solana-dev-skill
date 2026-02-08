@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Solana Dev Skill Installer for Claude Code
+# BNB Chain Dev Skill Installer for Claude Code
 # Usage: ./install.sh [--project | --path <path>]
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILL_NAME="solana-dev"
+SKILL_NAME="bnb-chain-dev"
 SOURCE_DIR="$SCRIPT_DIR/skill"
 
 # Default to personal installation
@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -h|--help)
-            echo "Solana Dev Skill Installer"
+            echo "BNB Chain Dev Skill Installer"
             echo ""
             echo "Usage: ./install.sh [OPTIONS]"
             echo ""
@@ -72,7 +72,7 @@ if [ -d "$INSTALL_PATH" ]; then
 fi
 
 # Copy skill files
-echo "Installing Solana Dev Skill..."
+echo "Installing BNB Chain Dev Skill..."
 cp -r "$SOURCE_DIR" "$INSTALL_PATH"
 
 echo ""
@@ -84,4 +84,4 @@ find "$INSTALL_PATH" -type f -name "*.md" | while read -r file; do
 done
 echo ""
 echo "The skill is now available in Claude Code."
-echo "Try asking about Solana development to activate it!"
+echo "Try asking about BNB Chain development to activate it!"
