@@ -306,6 +306,68 @@ impl MintInterface {
 }
 ```
 
+## Program Account Helpers
+
+If the program need to create PDA to store data, 
+here are some utils for minimizing duplicate code.
+
+```rust
+pub struct ProgramAccount;
+impl ProgramAccount {
+    pub fn check<T: Sized>(account: &AccountView) -> ProgramResult {
+        let len = size_of::<T>();
+
+        if !account.owned_by(&crate::ID) {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+
+        if account.data_len().ne(&len) {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        Ok(())
+    }
+
+    pub fn init<T: Sized>(
+        account: &AccountView,
+        payer: &AccountView,
+        signers: &[Signer],
+    ) -> ProgramResult {
+        let space = size_of::<T>();
+
+        // Get required lamports for rent
+        let lamports = Rent::get()?.try_minimum_balance(space)?;
+
+        // Create the account
+        CreateAccount {
+            from: payer,
+            to: account,
+            lamports,
+            space: space as u64,
+            owner: &crate::ID,
+        }
+        .invoke_signed(signers)?;
+        Ok(())
+    }
+
+    pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
+        {
+            let mut data = account.try_borrow_mut()?;
+            data[0] = 0xff;
+        }
+
+        destination.set_lamports(
+            destination
+                .lamports()
+                .checked_add(account.lamports())
+                .ok_or(ProgramError::ArithmeticOverflow)?,
+        );
+        account.resize(1)?;
+        account.close()
+    }
+}
+```
+
 ## Cross-Program Invocations (CPIs)
 
 ### Basic CPI
