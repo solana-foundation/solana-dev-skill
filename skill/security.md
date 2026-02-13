@@ -3,6 +3,7 @@
 ## Core Principle
 
 Assume the attacker controls:
+
 - Every account passed into an instruction
 - Every instruction argument
 - Transaction ordering (within reason)
@@ -19,6 +20,7 @@ Assume the attacker controls:
 **Attack**: Without owner checks, deserialization succeeds for both legitimate and counterfeit accounts.
 
 **Anchor Prevention**:
+
 ```rust
 // Option 1: Use typed accounts (automatic)
 pub account: Account<'info, ProgramAccount>,
@@ -29,6 +31,7 @@ pub account: UncheckedAccount<'info>,
 ```
 
 **Pinocchio Prevention**:
+
 ```rust
 if !account.is_owned_by(&crate::ID) {
     return Err(ProgramError::InvalidAccountOwner);
@@ -44,6 +47,7 @@ if !account.is_owned_by(&crate::ID) {
 **Attack**: Attacker locates target account, extracts owner pubkey, constructs transaction using real owner's address without their signature.
 
 **Anchor Prevention**:
+
 ```rust
 // Option 1: Use Signer type
 pub authority: Signer<'info>,
@@ -59,6 +63,7 @@ if !ctx.accounts.authority.is_signer {
 ```
 
 **Pinocchio Prevention**:
+
 ```rust
 if !self.accounts.authority.is_signer() {
     return Err(ProgramError::MissingRequiredSignature);
@@ -74,6 +79,7 @@ if !self.accounts.authority.is_signer() {
 **Attack**: Attacker substitutes malicious program mimicking expected interface (e.g., fake SPL Token that reverses transfers).
 
 **Anchor Prevention**:
+
 ```rust
 // Use typed Program accounts
 pub token_program: Program<'info, Token>,
@@ -85,6 +91,7 @@ if ctx.accounts.token_program.key() != &spl_token::ID {
 ```
 
 **Pinocchio Prevention**:
+
 ```rust
 if self.accounts.token_program.key() != &pinocchio_token::ID {
     return Err(ProgramError::IncorrectProgramId);
@@ -100,6 +107,7 @@ if self.accounts.token_program.key() != &pinocchio_token::ID {
 **Attack**: Attacker reinitializes account to become new owner, then drains controlled assets.
 
 **Anchor Prevention**:
+
 ```rust
 // Use init constraint (automatic protection)
 #[account(init, payer = payer, space = 8 + Data::LEN)]
@@ -114,6 +122,7 @@ if ctx.accounts.account.is_initialized {
 **Critical**: Avoid `init_if_needed` - it permits reinitialization.
 
 **Pinocchio Prevention**:
+
 ```rust
 // Check discriminator before initialization
 let data = account.try_borrow_data()?;
@@ -131,12 +140,14 @@ if data[0] == ACCOUNT_DISCRIMINATOR {
 **Attack**: Shared PDA authority becomes "master key" unlocking multiple users' assets.
 
 **Vulnerable Pattern**:
+
 ```rust
 // BAD: Only mint in seeds - all vaults for same token share authority
 seeds = [b"pool", pool.mint.as_ref()]
 ```
 
 **Secure Pattern**:
+
 ```rust
 // GOOD: Include user-specific identifiers
 seeds = [b"pool", vault.key().as_ref(), owner.key().as_ref()]
@@ -155,6 +166,7 @@ seeds = [b"pool", vault.key().as_ref(), owner.key().as_ref()]
 **Anchor**: Automatic 8-byte discriminator with `#[account]` macro.
 
 **Pinocchio**:
+
 ```rust
 // Validate discriminator before processing
 let data = account.try_borrow_data()?;
@@ -172,6 +184,7 @@ if data[0] != EXPECTED_DISCRIMINATOR {
 **Attack**: Sequential mutations on identical accounts cancel earlier changes.
 
 **Prevention**:
+
 ```rust
 // Anchor
 if ctx.accounts.account_1.key() == ctx.accounts.account_2.key() {
@@ -193,6 +206,7 @@ if self.accounts.account_1.key() == self.accounts.account_2.key() {
 **Attack**: Multi-instruction transaction drains account, refunds rent, exploits "closed" account.
 
 **Secure Closure Pattern**:
+
 ```rust
 // Anchor: Use close constraint
 #[account(mut, close = destination)]
@@ -200,17 +214,10 @@ pub account: Account<'info, Data>,
 
 // Pinocchio: Full secure closure
 pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult {
-    // 1. Mark as closed
-    {
-        let mut data = account.try_borrow_mut_data()?;
-        data[0] = 0xff; // Closed discriminator
-    }
+    // 1. Add lamports
+    destination.set_lamports(destination.lamports() + account.lamports())?;
 
-    // 2. Transfer lamports
-    *destination.try_borrow_mut_lamports()? += *account.try_borrow_lamports()?;
-
-    // 3. Shrink and close
-    account.realloc(1, true)?;
+    // 2. Close
     account.close()
 }
 ```
@@ -224,6 +231,7 @@ pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult 
 **Attack**: Signer matches transaction but not stored owner field.
 
 **Prevention**:
+
 ```rust
 // Anchor: has_one constraint
 #[account(has_one = authority)]
@@ -241,6 +249,7 @@ if data.authority != *authority.key() {
 ## Program-Side Checklist
 
 ### Account Validation
+
 - [ ] Validate account owners match expected program
 - [ ] Validate signer requirements explicitly
 - [ ] Validate writable requirements explicitly
@@ -250,16 +259,19 @@ if data.authority != *authority.key() {
 - [ ] Check for duplicate mutable accounts
 
 ### CPI Safety
+
 - [ ] Validate program IDs before CPIs (no arbitrary CPI)
 - [ ] Do not pass extra writable or signer privileges to callees
 - [ ] Ensure invoke_signed seeds are correct and canonical
 
 ### Arithmetic and Invariants
+
 - [ ] Use checked math (`checked_add`, `checked_sub`, `checked_mul`, `checked_div`)
 - [ ] Avoid unchecked casts
 - [ ] Re-validate state after CPIs when required
 
 ### State Lifecycle
+
 - [ ] Close accounts securely (mark discriminator, drain lamports)
 - [ ] Avoid leaving "zombie" accounts with lamports
 - [ ] Gate upgrades and ownership transfers
