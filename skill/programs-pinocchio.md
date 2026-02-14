@@ -306,6 +306,78 @@ impl MintInterface {
 }
 ```
 
+## Program Account Helpers
+
+If the program need to create PDA to store data, 
+here are some utils for minimizing duplicate code.
+
+```rust
+// Auxiliary trait for different PDA data structure 
+pub trait PdaDisc {
+    fn check_discriminator(bytes: &[u8]) -> ProgramResult;
+}
+
+pub struct ProgramAccount;
+impl ProgramAccount {
+    pub fn check<T: Sized + PdaDisc>(account: &AccountView) -> ProgramResult {
+        let len = size_of::<T>();
+
+        if !account.owned_by(&crate::ID) {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+
+        if account.data_len().ne(&len) {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        let bytes = account.try_borrow()?;
+        T::check_discriminator(&bytes)?;
+
+        Ok(())
+    }
+
+    pub fn init<T: Sized>(
+        account: &AccountView,
+        payer: &AccountView,
+        signers: &[Signer],
+    ) -> ProgramResult {
+        let space = size_of::<T>();
+
+        // Get required lamports for rent
+        let lamports = Rent::get()?.try_minimum_balance(space)?;
+
+        // Combine transfer, allocate, and assign for preventing DOS attacks
+        Transfer {
+            from: payer,
+            to: account,
+            lamports,
+        }.invoke()?;
+
+        Allocate {
+            account,
+            space: space as u64,
+        }.invoke_signed(signers)?;
+
+        Assign {
+            account,
+            owner: &crate::ID,
+        }.invoke_signed(signers)?;
+
+        Ok(())
+    }
+
+    pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
+        destination.set_lamports(
+            destination
+                .lamports()
+                .checked_add(account.lamports())
+                .ok_or(ProgramError::ArithmeticOverflow)?,
+        );
+        account.close()
+    }
+}
+```
+
 ## Cross-Program Invocations (CPIs)
 
 ### Basic CPI
