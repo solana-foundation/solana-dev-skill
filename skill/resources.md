@@ -13,7 +13,7 @@
 
 ## Modern JS/TS SDK
 - [@solana/kit Repository](https://github.com/anza-xyz/kit)
-- [Solana Kit Docs](https://solana.com/docs/clients/kit) (installation, upgrade guide)
+- [Solana Kit Docs](https://www.solanakit.com/docs)
 
 ## UI and Wallet Infrastructure
 - [framework-kit Repository](https://github.com/solana-foundation/framework-kit) (@solana/client, @solana/react-hooks)
@@ -48,12 +48,12 @@
 - [mollusk-svm crate](https://crates.io/crates/mollusk-svm)
 
 ### Surfpool
-- [Surfpool Documentation](https://docs.surfpool.dev/)
+- [Surfpool Documentation](https://docs.surfpool.run/)
 - [Surfpool Repository](https://github.com/txtx/surfpool)
 
 ## IDLs and Codegen
 - [Codama Repository](https://github.com/codama-idl/codama)
-- [Codama Generating Clients](https://solana.com/docs/programs/codama-generating-clients)
+- [Codama Generating Clients](https://solana.com/docs/programs/codama/clients)
 - [Shank (Metaplex)](https://github.com/metaplex-foundation/shank)
 - [Kinobi (Metaplex)](https://github.com/metaplex-foundation/kinobi)
 
@@ -64,12 +64,12 @@
 
 ## Payments
 - [Commerce Kit Repository](https://github.com/solana-foundation/commerce-kit)
-- [Commerce Kit Documentation](https://commercekit.solana.com/)
-- [Kora Documentation](https://docs.kora.network/)
+- [Commerce Kit Documentation](https://launch.solana.com/docs/commerce-kit)
+- [Kora Documentation](https://launch.solana.com/docs/kora)
 
 ## Security
 - [Blueshift Program Security Course](https://learn.blueshift.gg/en/courses/program-security)
-- [Solana Security Best Practices](https://solana.com/docs/programs/security)
+- [Program Security Best Practices (Helius)](https://www.helius.dev/blog/a-hitchhikers-guide-to-solana-program-security)
 
 ## Performance and Optimization
 - [Solana Optimized Programs](https://github.com/Laugharne/solana_optimized_programs)
