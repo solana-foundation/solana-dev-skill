@@ -48,7 +48,7 @@
 - [mollusk-svm crate](https://crates.io/crates/mollusk-svm)
 
 ### Surfpool
-- [Surfpool Documentation](https://docs.surfpool.dev/)
+- [Surfpool Documentation](https://docs.surfpool.run/)
 - [Surfpool Repository](https://github.com/txtx/surfpool)
 
 ## IDLs and Codegen
