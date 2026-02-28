@@ -90,7 +90,7 @@ This skill incorporates best practices from:
 - [Solana Official Documentation](https://solana.com/docs)
 - [Anza/Pinocchio](https://github.com/anza-xyz/pinocchio) - Zero-dependency program development
 - [LiteSVM](https://github.com/LiteSVM/litesvm) - Lightweight testing
-- [Surfpool](https://docs.surfpool.dev/) - Integration testing with mainnet state
+- [Surfpool](https://docs.surfpool.run/) - Integration testing with mainnet state
 
 ## Progressive Disclosure
 
