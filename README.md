@@ -13,6 +13,7 @@ This skill provides Claude Code with deep knowledge of the current Solana develo
 - **Testing**: LiteSVM/Mollusk for unit tests, Surfpool for integration
 - **Codegen**: Codama-first IDL and client generation
 - **Security**: Comprehensive vulnerability patterns and prevention
+- **Toolchain**: Version compatibility, common errors, and troubleshooting guides
 
 ## Installation
 
@@ -43,7 +44,9 @@ skill/
 ├── idl-codegen.md              # IDL and client generation
 ├── payments.md                 # Payments with Commerce Kit
 ├── security.md                 # Security vulnerabilities & prevention
-└── resources.md                # Curated reference links
+├── resources.md                # Curated reference links
+├── compatibility-matrix.md     # Version compatibility tables (Anchor/Solana/Rust/GLIBC)
+└── common-errors.md            # Error message → solution mappings
 ```
 
 ## Usage
@@ -57,6 +60,8 @@ Once installed, Claude Code will automatically use this skill when you ask about
 - Client SDK generation (typed program clients)
 - Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
+- **Toolchain issues** (version mismatches, GLIBC errors, dependency conflicts)
+- **Migration** between Anchor/Solana CLI versions
 
 ### Example Prompts
 
@@ -67,6 +72,9 @@ Once installed, Claude Code will automatically use this skill when you ask about
 "How do I integrate a legacy web3.js library with my Kit-based app?"
 "Write LiteSVM tests for my token transfer instruction"
 "Review this program for security issues"
+"I'm getting GLIBC_2.39 not found when running anchor"
+"Help me upgrade from Anchor 0.30 to 0.31"
+"What versions of Solana CLI work with Anchor 0.31?"
 ```
 
 ## Stack Decisions
