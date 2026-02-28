@@ -16,6 +16,8 @@ Use this Skill when the user asks for:
 - Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
 - Confidential transfers (Token-2022 ZK extension)
+- **Toolchain setup, version mismatches, GLIBC errors, dependency conflicts**
+- **Upgrading Anchor/Solana CLI versions, migration between versions**
 
 ## Default stack decisions (opinionated)
 1) **UI: framework-kit first**
@@ -87,3 +89,5 @@ When you implement changes, provide:
 - Confidential transfers: [confidential-transfers.md](confidential-transfers.md)
 - Security checklist: [security.md](security.md)
 - Reference links: [resources.md](resources.md)
+- **Version compatibility:** [compatibility-matrix.md](compatibility-matrix.md)
+- **Common errors & fixes:** [common-errors.md](common-errors.md)
