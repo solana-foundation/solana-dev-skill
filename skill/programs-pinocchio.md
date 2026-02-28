@@ -1,10 +1,11 @@
 # Programs with Pinocchio
 
-Pinocchio is a minimalist Rust library for crafting Solana programs without the heavyweight `solana-program` crate. It delivers significant performance gains through zero-copy techniques and minimal dependencies.
+Pinocchio is a minimalist Rust crate for crafting Solana programs without the heavyweight `solana-program` crate. It delivers significant performance gains through zero-copy techniques and minimal dependencies.
 
 ## When to Use Pinocchio
 
 Use Pinocchio when you need:
+
 - **Maximum compute efficiency**: 84% CU savings compared to Anchor
 - **Minimal binary size**: Leaner code paths and smaller deployments
 - **Zero external dependencies**: Only Solana SDK types required
@@ -54,12 +55,14 @@ Single-byte discriminators support 255 instructions; use two bytes for up to 65,
 ### Panic Handler Configuration
 
 **For std environments (SBF builds):**
+
 ```rust
 entrypoint!(process_instruction);
 // Remove nostd_panic_handler!() - std provides panic handling
 ```
 
 **For no_std environments:**
+
 ```rust
 #![no_std]
 entrypoint!(process_instruction);
@@ -76,6 +79,7 @@ pub const ID: Address = Address::new_from_array([
     0xXX, 0xXX, ..., 0xXX,
 ]);
 ```
+
 // Note: Use `Address::new_from_array()` not `Address::new()`
 
 ### Recommended Import Structure
@@ -207,103 +211,32 @@ impl<'a> TryFrom<&'a [u8]> for DepositData {
 }
 ```
 
-## Token Account Helpers
+## Token programs
 
-### SPL Token Validation
+Use the crates pinocchio-token and pinocchio-token2022
+
+### SPL Token
 
 ```rust
-pub struct Mint;
+use pinoccio_token::{instructions::InitializeMint2, state::Mint};
 
-impl Mint {
-    pub fn check(account: &AccountView) -> Result<(), ProgramError> {
-        if !account.owned_by(&pinocchio_token::ID) {
-            return Err(ProgramError::InvalidAccountOwner);
-        }
-        if account.data_len() != pinocchio_token::state::Mint::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        Ok(())
-    }
+...
+InitializeMint2 {
+    mint: account,
+    decimals,
+    mint_authority,
+    freeze_authority,
+}.invoke()?;
 
-    pub fn init(
-        account: &AccountView,
-        payer: &AccountView,
-        decimals: u8,
-        mint_authority: &[u8; 32],
-        freeze_authority: Option<&[u8; 32]>,
-    ) -> ProgramResult {
-        let lamports = Rent::get()?.minimum_balance(pinocchio_token::state::Mint::LEN);
-
-        CreateAccount {
-            from: payer,
-            to: account,
-            lamports,
-            space: pinocchio_token::state::Mint::LEN as u64,
-            owner: &pinocchio_token::ID,
-        }.invoke()?;
-
-        InitializeMint2 {
-            mint: account,
-            decimals,
-            mint_authority,
-            freeze_authority,
-        }.invoke()
-    }
-}
+let mint = Mint::from_account_view(account)?;
 ```
 
-### Token2022 Support
+### Token2022
 
-Token2022 requires discriminator-based validation due to variable account sizes with extensions:
-
-```rust
-pub const TOKEN_2022_PROGRAM_ID: [u8; 32] = [...];
-const TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET: usize = 165;
-pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
-pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
-
-pub struct Mint2022;
-
-impl Mint2022 {
-    pub fn check(account: &AccountView) -> Result<(), ProgramError> {
-        if !account.is_owned_by(&TOKEN_2022_PROGRAM_ID) {
-            return Err(ProgramError::InvalidAccountOwner);
-        }
-
-        let data = account.try_borrow_data()?;
-
-        if data.len() != pinocchio_token::state::Mint::LEN {
-            if data.len() <= TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET {
-                return Err(ProgramError::InvalidAccountData);
-            }
-            if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET] != TOKEN_2022_MINT_DISCRIMINATOR {
-                return Err(ProgramError::InvalidAccountData);
-            }
-        }
-        Ok(())
-    }
-}
-```
-
-### Token Interface (Both Programs)
+Token2022 provides a similar state struct
 
 ```rust
-pub struct MintInterface;
-
-impl MintInterface {
-    pub fn check(account: &AccountView) -> Result<(), ProgramError> {
-        if account.is_owned_by(&pinocchio_token::ID) {
-            if account.data_len() != pinocchio_token::state::Mint::LEN {
-                return Err(ProgramError::InvalidAccountData);
-            }
-        } else if account.is_owned_by(&TOKEN_2022_PROGRAM_ID) {
-            Mint2022::check(account)?;
-        } else {
-            return Err(ProgramError::InvalidAccountOwner);
-        }
-        Ok(())
-    }
-}
+let mint = Mint::from_account_view(account)?;
 ```
 
 ## Cross-Program Invocations (CPIs)
@@ -323,12 +256,13 @@ Transfer {
 ### PDA-Signed CPI
 
 ```rust
-use pinocchio::{seeds::Seed, signer::Signer};
+use pinocchio::cpi::{Seed, Signer};
 
+let bump_byte = &[bump];
 let seeds = [
     Seed::from(b"vault"),
     Seed::from(self.accounts.owner.address().as_ref()),
-    Seed::from(&[bump]),
+    Seed::from(&bump_byte),
 ];
 let signers = [Signer::from(&seeds)];
 
@@ -491,17 +425,10 @@ Prevent revival attacks by marking closed accounts:
 
 ```rust
 pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
-    // Mark as closed (prevents reinitialization)
-    {
-        let mut data = account.try_borrow_mut_data()?;
-        data[0] = 0xff;
-    }
+    // Add lamports
+    destination.set_lamports(destination.lamports() + account.lamports())?;
 
-    // Transfer lamports
-    *destination.try_borrow_mut_lamports()? += *account.try_borrow_lamports()?;
-
-    // Shrink and close
-    account.realloc(1, true)?;
+    // Close
     account.close()
 }
 ```
@@ -628,6 +555,7 @@ See [testing.md](testing.md) for detailed testing patterns with Mollusk and Lite
 ### Build Validation
 
 After `cargo build-sbf`:
+
 - [ ] Check .so file size (>1KB, typically 5-15KB for Pinocchio programs)
 - [ ] Verify file type: `file target/deploy/program.so` should show "ELF 64-bit LSB shared object"
 - [ ] Test regular compilation: `cargo build` should succeed
@@ -636,6 +564,7 @@ After `cargo build-sbf`:
 ### Dependency Compatibility Issues
 
 **If SBF build fails with "edition2024" errors:**
+
 ```bash
 # Downgrade problematic dependencies to compatible versions
 cargo update base64ct --precise 1.6.0
