@@ -167,22 +167,6 @@ impl<'a> TryFrom<&'a [AccountView]> for DepositAccounts<'a> {
         Ok(Self { owner, vault, system_program })
     }
 }
-
-
-
-        // Owner check
-        if !vault.is_owned_by(&pinocchio_system::ID) {
-            return Err(ProgramError::InvalidAccountOwner);
-        }
-
-        // Program ID check (prevents arbitrary CPI)
-        if system_program.address() != &pinocchio_system::ID {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        Ok(Self { owner, vault, system_program })
-    }
-}
 ```
 
 ### Instruction Data Validation
@@ -218,7 +202,7 @@ Use the crates pinocchio-token and pinocchio-token2022
 ### SPL Token
 
 ```rust
-use pinoccio_token::{instructions::InitializeMint2, state::Mint};
+use pinocchio_token::{instructions::InitializeMint2, state::Mint};
 
 ...
 InitializeMint2 {
@@ -236,6 +220,10 @@ let mint = Mint::from_account_view(account)?;
 Token2022 provides a similar state struct
 
 ```rust
+use pinocchio_token_2022::{instructions::InitializeMint2, state::Mint};
+
+...
+
 let mint = Mint::from_account_view(account)?;
 ```
 
