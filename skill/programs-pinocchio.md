@@ -223,6 +223,13 @@ Token2022 provides a similar state struct
 use pinocchio_token_2022::{instructions::InitializeMint2, state::Mint};
 
 ...
+InitializeMint2 {
+    mint: account,
+    decimals,
+    mint_authority,
+    freeze_authority,
+    token_program
+}.invoke()?;
 
 let mint = Mint::from_account_view(account)?;
 ```
