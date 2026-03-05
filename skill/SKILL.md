@@ -91,3 +91,5 @@ When you implement changes, provide:
 - Reference links: [resources.md](resources.md)
 - **Version compatibility:** [compatibility-matrix.md](compatibility-matrix.md)
 - **Common errors & fixes:** [common-errors.md](common-errors.md)
+- **Surfpool (local network):** [surfpool.md](surfpool.md)
+- **Surfpool cheatcodes:** [surfpool-cheatcodes.md](surfpool-cheatcodes.md)
