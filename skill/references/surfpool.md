@@ -409,24 +409,18 @@ Surfpool includes a built-in MCP (Model Context Protocol) server for AI agent in
 
 ### Configuration
 
-#### Claude Code
+The MCP server uses stdio transport. Add the server entry to your tool's MCP config file:
 
-Add to `.claude/settings.json` or project-level `CLAUDE.md`:
+| Tool | Config file |
+|---|---|
+| Claude Code | `.claude/settings.json` (project) or `~/.claude/settings.json` (global) |
+| Claude Desktop | `claude_desktop_config.json` |
+| Cursor | `.cursor/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+| VS Code / Copilot | `.vscode/mcp.json` |
+| Codex | `codex.json` or MCP config via CLI |
 
-```json
-{
-  "mcpServers": {
-    "surfpool": {
-      "command": "surfpool",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-#### Cursor
-
-Add to `.cursor/mcp.json`:
+**Standard MCP config** (Claude Code, Claude Desktop, Cursor, Windsurf):
 
 ```json
 {
@@ -439,13 +433,11 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-#### Windsurf
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
+**VS Code / Copilot** (uses `servers` instead of `mcpServers`):
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "surfpool": {
       "command": "surfpool",
       "args": ["mcp"]
@@ -453,6 +445,8 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
   }
 }
 ```
+
+For any other MCP-compatible tool, use the stdio transport with command `surfpool` and args `["mcp"]`.
 
 ### Available MCP Tools
 
