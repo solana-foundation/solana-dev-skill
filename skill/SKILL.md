@@ -157,3 +157,4 @@ Once connected, you have access to these tools:
 - **Common errors & fixes:** [common-errors.md](references/common-errors.md)
 - **Surfpool (local network):** [surfpool/overview.md](references/surfpool/overview.md)
 - **Surfpool cheatcodes:** [surfpool/cheatcodes.md](references/surfpool/cheatcodes.md)
+- **Anchor v1 migration:** [anchor/migrating-v0.32-to-v1.md](references/anchor/migrating-v0.32-to-v1.md)

@@ -300,3 +300,14 @@ See [no-dna.org](https://no-dna.org) for the `NO_DNA` standard.
 - Treat the program's IDL as a product artifact
 - Prefer generating Kit-native clients via Codama
 - If using Anchor TS client in Kit-first app, put it behind web3-compat boundary
+
+## Migrations
+
+### Anchor v0.32 → v1
+
+- **Dependencies** — bump `anchor-lang` and `anchor-spl` to `^1`, and all `solana-*` crates to `^3`.
+- **CPI context** — `CpiContext::new` now takes a program ID (`Pubkey`) instead of a program `AccountInfo`. Remove the program account from the accounts struct.
+- **TypeScript** — replace `@coral-xyz/anchor` with `@anchor-lang/anchor`.
+- **IDL** — IDL management is being moved off program, **mandatory** actions required.
+
+See [anchor/migrating-v0.32-to-v1.md](./anchor/migrating-v0.32-to-v1.md) for the full checklist and before/after examples.
