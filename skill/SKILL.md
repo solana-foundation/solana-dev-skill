@@ -30,8 +30,9 @@ Use this Skill when the user asks for:
 - Prefer Wallet Standard discovery/connect via the framework-kit client.
 
 2) **SDK: @solana/kit first**
+- Start with `createClient` / `createLocalClient` from `@solana/kit-client-rpc` for RPC + transaction sending.
+- Use `@solana-program/*` program plugins (e.g., `tokenProgram()`) for fluent instruction APIs.
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
-- Prefer `@solana-program/*` instruction builders over hand-rolled instruction data.
 
 3) **Legacy compatibility: web3.js only at boundaries**
 - If you must integrate a library that expects web3.js objects (`PublicKey`, `Transaction`, `Connection`),
@@ -114,6 +115,9 @@ Once connected, you have access to these tools:
 - **When** the user asks about Anchor macros, constraints, or version-specific behavior
 
 ## Progressive disclosure (read when needed)
+- Solana Kit (@solana/kit): [kit/kit.md](kit/kit.md) — plugin clients, quick start, common patterns
+- Kit Plugins & Composition: [kit/plugins.md](kit/plugins.md) — ready-to-use clients, custom client composition, available plugins
+- Kit Advanced: [kit/advanced.md](kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
 - UI + wallet + hooks: [frontend-framework-kit.md](references/frontend-framework-kit.md)
 - Kit ↔ web3.js boundary: [kit-web3-interop.md](references/kit-web3-interop.md)
 - Anchor programs: [programs-anchor.md](references/programs-anchor.md)
