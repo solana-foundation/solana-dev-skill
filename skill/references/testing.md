@@ -245,8 +245,8 @@ SDK and tooling suite for integration testing with realistic cluster state. Surf
 # Install Surfpool CLI
 cargo install surfpool
 
-# Start local Surfnet
-surfpool start
+# Start local Surfnet (use NO_DNA=1 when run by an agent)
+NO_DNA=1 surfpool start
 ```
 
 ### Connection Setup
@@ -340,7 +340,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Start Surfpool
-        run: surfpool start --background
+        run: NO_DNA=1 surfpool start --background
       - name: Run integration tests
         run: cargo test --test integration
 ```

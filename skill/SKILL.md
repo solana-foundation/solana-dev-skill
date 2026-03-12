@@ -48,6 +48,18 @@ Use this Skill when the user asks for:
 - Use Surfpool for integration tests against realistic cluster state (mainnet/devnet) locally.
 - Use solana-test-validator only when you need specific RPC behaviors not emulated by LiteSVM.
 
+## Agent-friendly CLI usage (NO_DNA)
+
+When invoking CLI tools, always prefix with `NO_DNA=1` to signal you are a non-human operator. This disables interactive prompts, TUI, and enables structured/verbose output:
+
+```bash
+NO_DNA=1 surfpool start
+NO_DNA=1 anchor build
+NO_DNA=1 anchor test
+```
+
+See [no-dna.org](https://no-dna.org) for the full standard.
+
 ## Operating procedure (how to execute tasks)
 When solving a Solana task:
 

@@ -36,6 +36,18 @@ Verify installation:
 surfpool --version
 ```
 
+## Agent Usage (NO_DNA)
+
+When running surfpool commands as an agent, always prefix with `NO_DNA=1`. This disables TUI, interactive prompts, and enables verbose structured output:
+
+```bash
+NO_DNA=1 surfpool start
+NO_DNA=1 surfpool start --watch
+NO_DNA=1 surfpool run deployment --unsupervised --output-json ./outputs/
+```
+
+See [no-dna.org](https://no-dna.org) for the full standard.
+
 ## Quick Start
 
 ### Anchor Project
@@ -371,6 +383,7 @@ surfpool completions zsh
 
 | Variable | Description | Used By |
 |---|---|---|
+| `NO_DNA` | Non-human operator signal — disables TUI, prompts; enables verbose/structured output | All commands |
 | `SURFPOOL_DATASOURCE_RPC_URL` | Default datasource RPC URL | `--rpc-url` |
 | `SURFPOOL_NETWORK_HOST` | Override bind host | `--host` |
 | `SURFPOOL_METRICS_ENABLED` | Enable Prometheus metrics | `--metrics-enabled` |
@@ -540,10 +553,12 @@ See [surfpool-scenarios.md](surfpool-scenarios.md) for full template schemas and
 
 ## Common Agent Workflows
 
+> **Note:** All commands below should be prefixed with `NO_DNA=1` when run by an agent.
+
 ### 1. Start a Local Network and Deploy a Program
 
 ```bash
-surfpool start --watch
+NO_DNA=1 surfpool start --watch
 ```
 
 Surfpool detects `txtx.yml`, generates a deployment runbook if needed, deploys programs, and airdrops SOL to the default keypair. The RPC is available at `http://127.0.0.1:8899`.
@@ -586,5 +601,5 @@ curl -X POST http://127.0.0.1:8899 -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"surfnet_exportSnapshot","params":[]}'
 
 # Load on next start
-surfpool start --snapshot ./snapshot.json
+NO_DNA=1 surfpool start --snapshot ./snapshot.json
 ```

@@ -288,9 +288,12 @@ Additionally, if you encounter warnings about `solana-program` conflicts, add `s
 
 ## Testing
 
-- Use `anchor test` for end-to-end tests
+- Use `NO_DNA=1 anchor test` for end-to-end tests (when run by an agent)
+- Use `NO_DNA=1 anchor build` for builds (when run by an agent)
 - Prefer Mollusk or LiteSVM for fast unit tests
 - Use Surfpool for integration tests with mainnet state
+
+See [no-dna.org](https://no-dna.org) for the `NO_DNA` standard.
 
 ## IDL and Clients
 
