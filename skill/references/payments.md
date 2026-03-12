@@ -1,3 +1,8 @@
+---
+title: Payments & Commerce
+description: Build checkout flows, payment buttons, and QR-based payment requests using Commerce Kit and Solana Pay.
+---
+
 # Payments and commerce (optional)
 
 ## When payments are in scope

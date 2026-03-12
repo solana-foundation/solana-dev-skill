@@ -1,3 +1,8 @@
+---
+title: Frontend with framework-kit
+description: Build React and Next.js Solana apps with a single client instance, Wallet Standard-first connection, and minimal client-side footprint.
+---
+
 # Frontend with framework-kit (Next.js / React)
 
 ## Goals

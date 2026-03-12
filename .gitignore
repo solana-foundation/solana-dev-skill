@@ -12,3 +12,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+tests/node_modules
+.claude
+.agents

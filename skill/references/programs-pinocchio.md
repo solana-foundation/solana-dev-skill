@@ -1,3 +1,8 @@
+---
+title: Programs with Pinocchio
+description: Build high-performance Solana programs with zero-copy techniques and minimal dependencies, without the solana-program overhead.
+---
+
 # Programs with Pinocchio
 
 Pinocchio is a minimalist Rust crate for crafting Solana programs without the heavyweight `solana-program` crate. It delivers significant performance gains through zero-copy techniques and minimal dependencies.

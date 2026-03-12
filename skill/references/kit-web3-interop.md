@@ -1,3 +1,8 @@
+---
+title: Kit ↔ web3.js Interop
+description: Patterns for bridging @solana/kit and legacy @solana/web3.js at adapter boundaries while migrating incrementally.
+---
+
 # Kit ↔ web3.js Interop (boundary patterns)
 
 ## The rule

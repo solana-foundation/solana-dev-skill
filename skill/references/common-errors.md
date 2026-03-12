@@ -1,3 +1,8 @@
+---
+title: Common Errors & Solutions
+description: Diagnose and fix common errors encountered when building on Solana, including GLIBC issues, Anchor version conflicts, and RPC errors.
+---
+
 # Common Solana Development Errors & Solutions
 
 ## GLIBC Errors

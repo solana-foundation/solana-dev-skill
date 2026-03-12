@@ -1,3 +1,8 @@
+---
+title: Security Checklist
+description: Program and client security checklist covering account validation, signer checks, and common attack vectors to review before deploying.
+---
+
 # Solana Security Checklist (Program + Client)
 
 ## Core Principle

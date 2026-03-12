@@ -1,3 +1,8 @@
+---
+title: Testing Strategy
+description: A testing pyramid for Solana programs using LiteSVM for fast unit tests, Mollusk for isolated instruction checks, and Surfpool for integration tests with realistic state.
+---
+
 # Testing Strategy (LiteSVM / Mollusk / Surfpool)
 
 ## Testing Pyramid

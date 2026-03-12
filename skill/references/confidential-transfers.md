@@ -1,3 +1,8 @@
+---
+title: Confidential Transfers
+description: Implement private, encrypted token balances on Solana using the Token-2022 confidential transfers extension.
+---
+
 # Confidential Transfers (Token-2022 Extension)
 
 ## When to use this guidance

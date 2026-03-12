@@ -1,3 +1,8 @@
+---
+title: Curated Resources
+description: Authoritative Solana learning platforms, documentation, tooling references, and community resources.
+---
+
 # Curated Resources (Source-of-Truth First)
 
 ## Learning Platforms

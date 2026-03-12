@@ -1,3 +1,8 @@
+---
+title: Programs with Anchor
+description: Write Solana programs using the Anchor framework for fast iteration, automatic account validation, and built-in TypeScript client generation.
+---
+
 # Programs with Anchor (default choice)
 
 ## When to use Anchor

@@ -1,3 +1,8 @@
+---
+title: Version Compatibility Matrix
+description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js versions to avoid toolchain conflicts.
+---
+
 # Solana Version Compatibility Matrix
 
 ## Master Compatibility Table
