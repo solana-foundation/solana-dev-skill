@@ -380,7 +380,7 @@ Miss any one of these and your close instruction reverts. If that close is part 
 
 **Risk**: Transfer hooks run custom program logic on every transfer. Powerful — and dangerous.
 
-**Prevention**: If you're writing a transfer hook, validate all three:
+**Prevention**: If you're writing a transfer hook and mutating PDA state, validate all three:
 - The mint calling your hook is one you actually support. Otherwise any mint can invoke your program and access your PDAs.
 - The token accounts are in transferring state. Without this check, attackers call your hook outside of a real transfer.
 - The token accounts actually belong to the mint passed in. An attacker can create their own hook that calls yours, passing fake accounts with a legitimate mint.
