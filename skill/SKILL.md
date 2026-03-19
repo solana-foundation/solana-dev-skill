@@ -49,6 +49,41 @@ Use this Skill when the user asks for:
 - Use Surfpool for integration tests against realistic cluster state (mainnet/devnet) locally.
 - Use solana-test-validator only when you need specific RPC behaviors not emulated by LiteSVM.
 
+## Quick-start patterns
+
+### framework-kit wallet + provider (Next.js)
+
+```tsx
+'use client';
+import { SolanaProvider } from '@solana/react-hooks';
+import { autoDiscover, createClient } from '@solana/client';
+
+const client = createClient({
+  endpoint: process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? 'https://api.devnet.solana.com',
+  walletConnectors: autoDiscover(),
+});
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <SolanaProvider client={client}>{children}</SolanaProvider>;
+}
+```
+
+### web3-compat boundary adapter
+
+When a dependency expects legacy `PublicKey` or `Transaction`, convert at the boundary only:
+
+```ts
+import { toAddress, toPublicKey } from '@solana/web3-compat';
+
+// Kit → web3.js (for legacy libs)
+const pubkey = toPublicKey(kitAddress);
+
+// web3.js → Kit (coming back)
+const addr = toAddress(legacyPublicKey);
+```
+
+Keep conversions in `src/solana/web3/` adapter modules — never let `PublicKey` leak into Kit-first code.
+
 ## Operating procedure (how to execute tasks)
 When solving a Solana task:
 
