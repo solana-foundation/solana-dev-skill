@@ -251,6 +251,100 @@ if data.authority != *authority.key() {
 
 ---
 
+## Pinocchio-Specific Vulnerabilities
+
+Anchor handles the following automatically via its account type system. When writing Pinocchio programs, these must be enforced manually in your `TryFrom` implementations.
+
+### 10. Sysvar Spoofing
+
+**Risk**: Pinocchio does not implicitly validate sysvar accounts (unlike Anchor). Any account can be passed where `Clock`, `Rent`, or `SlotHashes` is expected.
+
+**Attack**: Attacker creates a fake account with the correct data layout but incorrect address, manipulating the values your program reads (e.g., a fake `Clock` reporting a different timestamp).
+
+**Pinocchio Prevention**:
+
+```rust
+use pinocchio::sysvars::{clock::Clock, rent::Rent, Sysvar};
+
+// Use safe accessors, which validate the canonical sysvar account internally
+let clock = Clock::get()?;
+let rent = Rent::get()?;
+```
+
+---
+
+### 11. Bump Canonicalization
+
+**Risk**: Non-canonical bumps can be used to derive valid but unintended PDAs.
+
+**Attack**: `create_program_address` accepts any valid bump, but `find_program_address` returns the **canonical** (highest valid) bump. If your program stores a user-supplied bump and uses it directly, an attacker may store a non-canonical bump that derives a different address under certain conditions.
+
+**Prevention**:
+
+```rust
+// BAD: Store and trust user-supplied bump
+let pda = create_program_address(&[b"vault", &[user_supplied_bump]], &crate::ID)?;
+
+// GOOD: Derive canonical bump and store it yourself at init time
+let (pda, canonical_bump) = find_program_address(&[b"vault"], &crate::ID);
+// Store canonical_bump in account data, validate it on every use
+if stored_bump != canonical_bump {
+    return Err(ProgramError::InvalidSeeds);
+}
+```
+
+---
+
+### 12. Lamport Griefing (Pre-funded PDA)
+
+**Risk**: An attacker sends lamports to a PDA before your program initializes it, causing the initialization to fail or behave unexpectedly.
+
+**Attack**: If your init logic transfers the exact rent-exempt minimum, an account with existing lamports will end up with more lamports than expected and still not be owned by your program (the `Allocate` + `Assign` step fails because the account is non-empty).
+
+**Prevention**: Check for existing lamports and only transfer the deficit:
+
+```rust
+let required = Rent::get()?.minimum_balance(space);
+let existing = account.lamports();
+
+if existing < required {
+    Transfer {
+        from: payer,
+        to: account,
+        lamports: required - existing,
+    }.invoke()?;
+}
+
+Allocate { account, space: space as u64 }.invoke_signed(signers)?;
+Assign { account, owner: &crate::ID }.invoke_signed(signers)?;
+```
+
+---
+
+### 13. Missing Writable / Read-Only Enforcement (Hardening)
+
+**Risk**: Primarily a hardening gap. Missing mutability checks can weaken invariants and make authorization bugs easier to exploit.
+
+**Attack**: Usually not a standalone exploit (runtime enforces actual write privileges), but when combined with flawed authorization or CPI assumptions it can enable unintended state transitions.
+
+**Pinocchio Prevention**:
+
+```rust
+// Enforce read-only: account must NOT be writable
+if authority.is_writable() {
+    return Err(ProgramError::InvalidArgument);
+}
+
+// Enforce writable: account MUST be writable
+if !vault.is_writable() {
+    return Err(ProgramError::InvalidArgument);
+}
+```
+
+Add both checks to your `TryFrom` account validation alongside signer and owner checks as defense-in-depth.
+
+---
+
 ## Program-Side Checklist
 
 ### Account Validation
@@ -258,10 +352,13 @@ if data.authority != *authority.key() {
 - [ ] Validate account owners match expected program
 - [ ] Validate signer requirements explicitly
 - [ ] Validate writable requirements explicitly
-- [ ] Validate PDAs match expected seeds + bump
+- [ ] Validate read-only accounts are not writable
+- [ ] Validate PDAs match expected seeds + canonical bump
 - [ ] Validate token mint ↔ token account relationships
 - [ ] Validate rent exemption / initialization status
 - [ ] Check for duplicate mutable accounts
+- [ ] Verify sysvar addresses before reading (Pinocchio: no implicit validation)
+- [ ] Handle existing lamports on PDA init (lamport griefing)
 
 ### CPI Safety
 
@@ -455,3 +552,7 @@ When an AI agent is generating or executing Solana code on the user's behalf:
 10. Can an attacker exploit permanent delegate authority to drain token accounts?
 11. Can an attacker close and reinitialize a mint to bypass extension rules?
 12. Is the protocol using `transfer_checked` for all Token-2022 token movements?
+13. Can an attacker pass a fake sysvar account (Clock, Rent, SlotHashes)?
+14. Does PDA creation store and validate the canonical bump?
+15. Can an attacker pre-fund a PDA to grief initialization?
+16. Are accounts that must be read-only protected from being passed as writable?

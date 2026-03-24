@@ -530,7 +530,7 @@ Surfpool exposes 22 `surfnet_*` JSON-RPC methods on the same port as the standar
 ### Scenarios
 - `surfnet_registerScenario` — register a set of account overrides on a timeline
 
-See [surfpool-cheatcodes.md](surfpool-cheatcodes.md) for full parameter schemas and JSON-RPC examples.
+See [cheatcodes.md](cheatcodes.md) for full parameter schemas and JSON-RPC examples.
 
 ## Scenarios Overview
 
@@ -549,7 +549,7 @@ The scenario system allows overriding protocol account state to simulate market 
 | Drift | v2 | PerpMarket, SpotMarket, User, State | Perp market, spot market, user state, global state |
 | Whirlpool | v0.7.0 | Whirlpool | SOL/USDC, SOL/USDT, mSOL/SOL, ORCA/USDC |
 
-See [surfpool-scenarios.md](surfpool-scenarios.md) for full template schemas and protocol details.
+Protocol templates and scenario coverage are summarized in this section.
 
 ## Common Agent Workflows
 

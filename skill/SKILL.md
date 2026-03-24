@@ -145,8 +145,8 @@ Once connected, you have access to these tools:
 - Kit Advanced: [kit/advanced.md](references/kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
 - UI + wallet + hooks: [frontend-framework-kit.md](references/frontend-framework-kit.md)
 - Kit ↔ web3.js boundary: [kit-web3-interop.md](references/kit-web3-interop.md)
-- Anchor programs: [programs-anchor.md](references/programs-anchor.md)
-- Pinocchio programs: [programs-pinocchio.md](references/programs-pinocchio.md)
+- Anchor programs: [programs/anchor.md](references/programs/anchor.md)
+- Pinocchio programs: [programs/pinocchio.md](references/programs/pinocchio.md)
 - Testing strategy: [testing.md](references/testing.md)
 - IDLs + codegen: [idl-codegen.md](references/idl-codegen.md)
 - Payments: [payments.md](references/payments.md)
@@ -155,5 +155,5 @@ Once connected, you have access to these tools:
 - Reference links: [resources.md](references/resources.md)
 - **Version compatibility:** [compatibility-matrix.md](references/compatibility-matrix.md)
 - **Common errors & fixes:** [common-errors.md](references/common-errors.md)
-- **Surfpool (local network):** [surfpool.md](references/surfpool.md)
-- **Surfpool cheatcodes:** [surfpool-cheatcodes.md](references/surfpool-cheatcodes.md)
+- **Surfpool (local network):** [surfpool/overview.md](references/surfpool/overview.md)
+- **Surfpool cheatcodes:** [surfpool/cheatcodes.md](references/surfpool/cheatcodes.md)

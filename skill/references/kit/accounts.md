@@ -50,7 +50,7 @@ const maybeMint = await fetchMaybeMint(rpc, mintAddress);
 
 ## Account Decoding
 
-See [./codecs.md](Codecs) for more information
+See [codecs.md](./codecs.md) for more information.
 
 ### With Codama Decoder
 

@@ -63,4 +63,4 @@ All `surfnet_*` JSON-RPC methods available on the surfnet RPC endpoint (default 
 
 ## Surfpool MCP Server
 
-For MCP server setup, available tools, resources, and agent workflows, see the [MCP Integration section in surfpool.md](surfpool.md#mcp-integration).
+For MCP server setup, available tools, resources, and agent workflows, see the [MCP Integration section in overview.md](overview.md#mcp-integration).

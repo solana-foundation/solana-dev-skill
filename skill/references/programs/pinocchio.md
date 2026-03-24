@@ -11,7 +11,7 @@ Pinocchio is a minimalist Rust crate for crafting Solana programs without the he
 
 Use Pinocchio when you need:
 
-- **Maximum compute efficiency**: 84% CU savings compared to Anchor
+- **Compute efficiency potential**: Can reduce compute units and binary size versus higher-level frameworks, depending on instruction complexity and validation strategy
 - **Minimal binary size**: Leaner code paths and smaller deployments
 - **Zero external dependencies**: Only Solana SDK types required
 - **Fine-grained control**: Direct memory access and byte-level operations
@@ -103,34 +103,186 @@ use pinocchio::{
 // pinocchio_system::instructions::Transfer,
 ```
 
-### Instruction Structure
 
-Separate validation from business logic using the `TryFrom` trait:
+## Utility Macros
+
+Define in `src/utils/macros.rs`:
 
 ```rust
-pub struct Deposit<'a> {
-    pub accounts: DepositAccounts<'a>,
-    pub data: DepositData,
+// Runtime length check — returns InvalidInstructionData
+macro_rules! require_len {
+    ($data:expr, $len:expr) => {
+        if $data.len() < $len {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+    };
 }
 
-impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for Deposit<'a> {
-    type Error = ProgramError;
+// Runtime length check — returns InvalidAccountData
+macro_rules! require_account_len {
+    ($data:expr, $len:expr) => {
+        if $data.len() < $len {
+            return Err(ProgramError::InvalidAccountData);
+        }
+    };
+}
 
-    fn try_from((data, accounts): (&'a [u8], &'a [AccountView])) -> Result<Self, Self::Error> {
-        let accounts = DepositAccounts::try_from(accounts)?;
-        let data = DepositData::try_from(data)?;
-        Ok(Self { accounts, data })
+// Validates byte 0 matches expected discriminator
+macro_rules! validate_discriminator {
+    ($data:expr, $disc:expr) => {
+        if $data.is_empty() || $data[0] != $disc {
+            return Err(ProgramError::InvalidAccountData);
+        }
+    };
+}
+
+// Compile-time: asserts struct size matches expected (catches padding bugs)
+macro_rules! assert_no_padding {
+    ($t:ty, $expected:expr) => {
+        const _: () = assert!(
+            core::mem::size_of::<$t>() == $expected,
+            "struct size mismatch — check for unexpected padding"
+        );
+    };
+}
+
+assert_no_padding!(Config, 65); // usage example
+```
+
+## Traits System
+
+Define these traits once in a shared module (e.g. `src/traits/`) and implement them on all state/instruction types.
+
+### Account byte layout
+
+All PDA accounts follow: `[discriminator: u8 | version: u8 | data...]`
+
+**Important**: Pinocchio uses a 1-byte discriminator. Anchor uses 8 bytes. Don't conflate them.
+
+```rust
+pub trait Discriminator {
+    const DISCRIMINATOR: u8; // 1 byte, not 8
+}
+
+pub trait Versioned {
+    const VERSION: u8;
+}
+
+// DATA_LEN = size of data payload only (excludes disc + version prefix)
+// LEN      = 1 + 1 + DATA_LEN  (total account size)
+pub trait AccountSize {
+    const DATA_LEN: usize;
+    const LEN: usize = 1 + 1 + Self::DATA_LEN;
+}
+
+// Zero-copy read: validates byte 0 (disc), skips byte 1 (version), casts &data[2..] to &Self
+pub trait AccountDeserialize: Sized + Discriminator + AccountSize {
+    fn from_bytes(data: &[u8]) -> Result<&Self, ProgramError> {
+        validate_discriminator!(data, Self::DISCRIMINATOR);
+        require_account_len!(data, Self::LEN);
+        Ok(unsafe { &*(data[2..].as_ptr() as *const Self) })
+    }
+    fn from_bytes_mut(data: &mut [u8]) -> Result<&mut Self, ProgramError> {
+        validate_discriminator!(data, Self::DISCRIMINATOR);
+        require_account_len!(data, Self::LEN);
+        Ok(unsafe { &mut *(data[2..].as_mut_ptr() as *mut Self) })
     }
 }
 
-impl<'a> Deposit<'a> {
-    pub const DISCRIMINATOR: &'a u8 = &0;
+pub trait AccountSerialize: Discriminator + Versioned {
+    fn to_bytes_inner(&self) -> Vec<u8>;
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = vec![Self::DISCRIMINATOR, Self::VERSION];
+        bytes.extend(self.to_bytes_inner());
+        bytes
+    }
+}
 
-    pub fn process(&self) -> ProgramResult {
-        // Business logic only - validation already complete
+// Marker traits — no methods
+pub trait InstructionAccounts<'a> {}
+
+// Marker trait for data structs; LEN is the expected byte length of instruction data
+pub trait InstructionData<'a>: Sized {
+    const LEN: usize;
+    // Data structs implement TryFrom<&'a [u8]> separately
+}
+
+pub trait PdaSeeds {
+    const PREFIX: &'static [u8];
+    fn seeds(&self) -> Vec<&[u8]>;
+    // Returns seeds + bump slice, ready for invoke_signed
+    fn seeds_with_bump<'a>(&'a self, bump: &'a [u8; 1]) -> Vec<Seed<'a>> {
+        let mut s: Vec<Seed> = self.seeds().into_iter().map(Seed::from).collect();
+        s.push(Seed::from(bump.as_ref()));
+        s
+    }
+    fn derive_address(&self, program_id: &Address) -> (Address, u8) {
+        Address::find_program_address(&self.seeds(), program_id)
+    }
+    fn validate_pda(&self, account: &AccountView, program_id: &Address, bump: u8) -> ProgramResult {
+        let (expected, canonical) = self.derive_address(program_id);
+        if account.address() != &expected || bump != canonical {
+            return Err(ProgramError::InvalidSeeds);
+        }
         Ok(())
     }
 }
+
+// For state structs that store their own bump
+pub trait PdaAccount: PdaSeeds {
+    fn bump(&self) -> u8;
+    fn validate_self(&self, account: &AccountView, program_id: &Address) -> ProgramResult {
+        self.validate_pda(account, program_id, self.bump())
+    }
+}
+```
+
+## Instruction Directory Structure
+
+Organize each instruction as its own module:
+
+```
+src/instructions/
+├── mod.rs              ← re-exports + discriminator enum
+├── impl_instructions.rs ← define_instruction! expansions
+├── deposit/
+│   ├── mod.rs
+│   ├── accounts.rs     ← DepositAccounts, TryFrom<&'a [AccountView]>
+│   ├── data.rs         ← DepositData, TryFrom<&'a [u8]>
+│   └── processor.rs    ← process() business logic
+└── withdraw/
+    └── ...
+```
+
+Use `define_instruction!` to wire accounts + data into an instruction struct without boilerplate:
+
+```rust
+macro_rules! define_instruction {
+    ($name:ident, $accounts:ty, $data:ty) => {
+        pub struct $name<'a> {
+            pub accounts: $accounts,
+            pub data: $data,
+        }
+
+        impl<'a> From<($accounts, $data)> for $name<'a> {
+            fn from((accounts, data): ($accounts, $data)) -> Self {
+                Self { accounts, data }
+            }
+        }
+
+        impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for $name<'a> {
+            type Error = ProgramError;
+            fn try_from((data, accounts): (&'a [u8], &'a [AccountView])) -> Result<Self, Self::Error> {
+                Ok(Self {
+                    accounts: <$accounts>::try_from(accounts)?,
+                    data: <$data>::try_from(data)?,
+                })
+            }
+        }
+    };
+}
+
+define_instruction!(Deposit, DepositAccounts<'a>, DepositData);
 ```
 
 ## Account Validation
@@ -172,22 +324,6 @@ impl<'a> TryFrom<&'a [AccountView]> for DepositAccounts<'a> {
         Ok(Self { owner, vault, system_program })
     }
 }
-
-
-
-        // Owner check
-        if !vault.is_owned_by(&pinocchio_system::ID) {
-            return Err(ProgramError::InvalidAccountOwner);
-        }
-
-        // Program ID check (prevents arbitrary CPI)
-        if system_program.address() != &pinocchio_system::ID {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
-        Ok(Self { owner, vault, system_program })
-    }
-}
 ```
 
 ### Instruction Data Validation
@@ -201,11 +337,9 @@ impl<'a> TryFrom<&'a [u8]> for DepositData {
     type Error = ProgramError;
 
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        if data.len() != core::mem::size_of::<u64>() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
+        require_len!(data, core::mem::size_of::<u64>());
 
-        let amount = u64::from_le_bytes(data.try_into().unwrap());
+        let amount = u64::from_le_bytes(data[..8].try_into().map_err(|_| ProgramError::InvalidInstructionData)?);
 
         if amount == 0 {
             return Err(ProgramError::InvalidInstructionData);
@@ -223,7 +357,7 @@ Use the crates pinocchio-token and pinocchio-token2022
 ### SPL Token
 
 ```rust
-use pinoccio_token::{instructions::InitializeMint2, state::Mint};
+use pinocchio_token::{instructions::InitializeMint2, state::Mint};
 
 ...
 InitializeMint2 {
@@ -242,78 +376,6 @@ Token2022 provides a similar state struct
 
 ```rust
 let mint = Mint::from_account_view(account)?;
-```
-
-## Program Account Helpers
-
-If the program need to create PDA to store data, 
-here are some utils for minimizing duplicate code.
-
-```rust
-// Auxiliary trait for different PDA data structure 
-pub trait PdaDisc {
-    fn check_discriminator(bytes: &[u8]) -> ProgramResult;
-}
-
-pub struct ProgramAccount;
-impl ProgramAccount {
-    pub fn check<T: Sized + PdaDisc>(account: &AccountView) -> ProgramResult {
-        let len = size_of::<T>();
-
-        if !account.owned_by(&crate::ID) {
-            return Err(ProgramError::InvalidAccountOwner);
-        }
-
-        if account.data_len().ne(&len) {
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        let bytes = account.try_borrow()?;
-        T::check_discriminator(&bytes)?;
-
-        Ok(())
-    }
-
-    pub fn init<T: Sized>(
-        account: &AccountView,
-        payer: &AccountView,
-        signers: &[Signer],
-    ) -> ProgramResult {
-        let space = size_of::<T>();
-
-        // Get required lamports for rent
-        let lamports = Rent::get()?.try_minimum_balance(space)?;
-
-        // Combine transfer, allocate, and assign for preventing DOS attacks
-        Transfer {
-            from: payer,
-            to: account,
-            lamports,
-        }.invoke()?;
-
-        Allocate {
-            account,
-            space: space as u64,
-        }.invoke_signed(signers)?;
-
-        Assign {
-            account,
-            owner: &crate::ID,
-        }.invoke_signed(signers)?;
-
-        Ok(())
-    }
-
-    pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
-        destination.set_lamports(
-            destination
-                .lamports()
-                .checked_add(account.lamports())
-                .ok_or(ProgramError::ArithmeticOverflow)?,
-        );
-        account.close()
-    }
-}
 ```
 
 ## Cross-Program Invocations (CPIs)
@@ -377,79 +439,31 @@ struct BadOrder {
 }
 ```
 
-### Zero-Copy Reading (Safe Pattern)
+### Compile-Time Layout Assertions
 
-Use byte arrays with accessor methods to avoid alignment issues:
+Use `assert_no_padding!(Type, expected_size)` to catch unintended struct padding at compile time. Pass the expected `DATA_LEN` (the payload, excluding the 2-byte disc+version prefix):
+
+```rust
+assert_no_padding!(Config, Config::DATA_LEN);
+```
+
+### Explicit Padding and Versioning
+
+Reserve bytes for future fields to avoid breaking account layout changes. Remember: the `discriminator` and `version` bytes live in the 2-byte prefix managed by `AccountSerialize`/`AccountDeserialize` — the struct itself contains only the data payload:
 
 ```rust
 #[repr(C)]
 pub struct Config {
-    pub authority: Pubkey,
-    pub mint: Pubkey,
-    seed: [u8; 8],   // Store as bytes
-    fee: [u8; 2],    // Store as bytes
-    pub state: u8,
     pub bump: u8,
+    pub authority: [u8; 32],
+    pub _reserved: [u8; 6], // explicit padding for future fields
 }
 
-impl Config {
-    pub const LEN: usize = core::mem::size_of::<Self>();
+impl Discriminator for Config { const DISCRIMINATOR: u8 = 0; }
+impl Versioned for Config     { const VERSION: u8 = 1; }
+impl AccountSize for Config   { const DATA_LEN: usize = 39; }
 
-    pub fn from_bytes(data: &[u8]) -> Result<&Self, ProgramError> {
-        if data.len() != Self::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        // Safe: all fields are byte-aligned
-        Ok(unsafe { &*(data.as_ptr() as *const Self) })
-    }
-
-    pub fn seed(&self) -> u64 {
-        u64::from_le_bytes(self.seed)
-    }
-
-    pub fn fee(&self) -> u16 {
-        u16::from_le_bytes(self.fee)
-    }
-
-    pub fn set_seed(&mut self, seed: u64) {
-        self.seed = seed.to_le_bytes();
-    }
-
-    pub fn set_fee(&mut self, fee: u16) {
-        self.fee = fee.to_le_bytes();
-    }
-}
-```
-
-### Field-by-Field Serialization (Safest)
-
-```rust
-impl Config {
-    pub fn write_to_buffer(&self, data: &mut [u8]) -> Result<(), ProgramError> {
-        if data.len() != Self::LEN {
-            return Err(ProgramError::InvalidAccountData);
-        }
-
-        let mut offset = 0;
-
-        data[offset..offset + 32].copy_from_slice(self.authority.as_ref());
-        offset += 32;
-
-        data[offset..offset + 32].copy_from_slice(self.mint.as_ref());
-        offset += 32;
-
-        data[offset..offset + 8].copy_from_slice(&self.seed);
-        offset += 8;
-
-        data[offset..offset + 2].copy_from_slice(&self.fee);
-        offset += 2;
-
-        data[offset] = self.state;
-        data[offset + 1] = self.bump;
-
-        Ok(())
-    }
-}
+assert_no_padding!(Config, 39);
 ```
 
 ### Dangerous Patterns to Avoid
@@ -522,7 +536,7 @@ perf = []
 
 ```rust
 #[cfg(not(feature = "perf"))]
-pinocchio::msg!("Instruction: Deposit");
+solana_program_log::log!("Instruction: Deposit");
 ```
 
 ### Bitwise Flags for Storage
@@ -614,6 +628,92 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
 }
 ```
 
+## Events
+
+### Simple logging
+
+For debug output or non-critical events where truncation is acceptable, use `solana-program-log` (pinocchio's own log module is being removed in favour of this crate — see [anza-xyz/pinocchio#261](https://github.com/anza-xyz/pinocchio/pull/261)):
+
+```rust
+use solana_program_log::log;
+
+log!("deposited {}", amount);
+```
+
+Solana truncates logs beyond ~10KB per transaction. If your event data exceeds this or indexers need to reliably parse it, use the CPI pattern below instead.
+
+### Event emission via CPI (truncation-safe)
+
+For production events that indexers must reliably read, emit via CPI into a no-op `EmitEvent` instruction on the program itself. The event data lives in the instruction data field (not logs), which is never truncated.
+
+Events are validated by an `event_authority` PDA that must sign the CPI:
+
+```rust
+pub const EVENT_AUTHORITY_SEED: &[u8] = b"event_authority";
+pub const EVENT_IX_TAG: u64 = 0x1d9acb512ea545e4; // Anchor-compatible event tag
+pub const EVENT_IX_TAG_LE: [u8; 8] = EVENT_IX_TAG.to_le_bytes();
+
+// Event authority PDA (derived at compile time if possible)
+pub fn find_event_authority() -> (Address, u8) {
+    pinocchio_pubkey::find_program_address(&[EVENT_AUTHORITY_SEED], &crate::ID)
+}
+```
+
+### Event Struct Pattern
+
+```rust
+pub trait EventDiscriminator {
+    const DISCRIMINATOR: [u8; 9]; // 8-byte tag + 1-byte event id
+}
+
+pub trait EventSerialize {
+    fn serialize(&self) -> Vec<u8>;
+}
+
+pub struct DepositEvent {
+    pub owner: [u8; 32],
+    pub amount: u64,
+}
+
+impl EventDiscriminator for DepositEvent {
+    const DISCRIMINATOR: [u8; 9] =
+        [/* EVENT_IX_TAG_LE bytes */ 0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d, /* event id */ 0];
+}
+```
+
+### Emitting an Event
+
+```rust
+pub fn emit_event<E: EventDiscriminator + EventSerialize>(
+    event: &E,
+    event_authority: &AccountView,
+    program: &AccountView,
+) -> ProgramResult {
+    let mut data = E::DISCRIMINATOR.to_vec();
+    data.extend(event.serialize());
+
+    // CPI to self with event_authority as signer
+    pinocchio::program::invoke(
+        &Instruction { program_id: &crate::ID, accounts: &[...], data: &data },
+        &[event_authority, program],
+    )
+}
+```
+
+### EmitEvent Processor
+
+Add a dedicated discriminator (conventionally `228`) that validates the event authority and does nothing else:
+
+```rust
+// In entrypoint routing:
+Some((228, _)) => {
+    if !accounts.iter().any(|a| a.address() == &event_authority && a.is_signer()) {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    Ok(()) // no-op, data is read off-chain from instruction data
+}
+```
+
 ## Testing
 
 Use Mollusk or LiteSVM for fast Rust-based testing:
@@ -625,7 +725,7 @@ pub mod tests;
 // Run with: cargo test-sbf
 ```
 
-See [testing.md](testing.md) for detailed testing patterns with Mollusk and LiteSVM.
+See [testing.md](../testing.md) for detailed testing patterns with Mollusk and LiteSVM.
 
 ## Build & Deployment
 
@@ -655,11 +755,25 @@ cargo update blake3 --precise 1.5.5
 
 ## Security Checklist
 
-- [ ] Validate all account owners in `TryFrom` implementations
-- [ ] Check signer status for authority accounts
-- [ ] Verify PDA derivation matches expected seeds
+### Account Validation
+- [ ] Validate account owners with `verify_owned_by` in `TryFrom`
+- [ ] Check signer status with `verify_signer`
+- [ ] Enforce writable/read-only with `verify_writable` / `verify_readonly`
 - [ ] Validate program IDs before CPIs (prevent arbitrary CPI)
+- [ ] Check for duplicate mutable accounts
+
+### PDA Safety
+- [ ] Derive canonical bump with `find_program_address` at init — never trust user-supplied bumps
+- [ ] Store canonical bump in account data and validate on every use via `PdaAccount::validate_self`
+- [ ] Only transfer the lamport deficit on init — not the full rent amount (lamport griefing)
+
+### Sysvars (Pinocchio has no implicit validation)
+- [ ] Use `Clock::get()?` and `Rent::get()?` — never accept sysvars as passed-in accounts
+
+### Data & Arithmetic
+- [ ] Use `require_len!` before parsing instruction data
 - [ ] Use checked math (`checked_add`, `checked_sub`, etc.)
-- [ ] Mark closed accounts to prevent revival attacks
-- [ ] Validate instruction data length before parsing
-- [ ] Check for duplicate mutable accounts when accepting multiple of same type
+
+### Account Lifecycle
+- [ ] Close accounts with `account.close()` — this transfers ownership back to the system program
+- [ ] Discriminator check on every read prevents type cosplay attacks

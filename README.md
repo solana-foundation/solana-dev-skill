@@ -35,22 +35,24 @@ cd solana-dev-skill
 
 ```
 skill/
-├── SKILL.md                    # Main skill definition (required)
-├── frontend-framework-kit.md   # UI patterns with framework-kit
-├── kit-web3-interop.md         # Kit ↔ web3.js boundary patterns
-├── programs-anchor.md          # Anchor program development
-├── programs-pinocchio.md       # Pinocchio (high-performance native)
-├── testing.md                  # Testing (LiteSVM/Mollusk/Surfpool)
-├── idl-codegen.md              # IDL and client generation
-├── payments.md                 # Payments with Commerce Kit
-├── security.md                 # Security vulnerabilities & prevention
-├── resources.md                # Curated reference links
-├── compatibility-matrix.md     # Version compatibility tables (Anchor/Solana/Rust/GLIBC)
-├── common-errors.md            # Error message → solution mappings
-├── surfpool.md                 # Surfpool local network guide
-├── surfpool-cheatcodes.md      # Surfpool cheatcodes reference
-├── surfpool-scenarios.md       # Surfpool testing scenarios
-└── confidential-transfers.md   # Confidential transfers (Token-2022 ZK)
+├── SKILL.md                         # Main skill definition (required)
+└── references/
+    ├── frontend-framework-kit.md    # UI patterns with framework-kit
+    ├── kit-web3-interop.md          # Kit ↔ web3.js boundary patterns
+    ├── testing.md                   # Testing (LiteSVM/Mollusk/Surfpool)
+    ├── idl-codegen.md               # IDL and client generation
+    ├── payments.md                  # Payments with Commerce Kit
+    ├── security.md                  # Security vulnerabilities & prevention
+    ├── resources.md                 # Curated reference links
+    ├── compatibility-matrix.md      # Version compatibility tables (Anchor/Solana/Rust/GLIBC)
+    ├── common-errors.md             # Error message → solution mappings
+    ├── confidential-transfers.md    # Confidential transfers (Token-2022 ZK)
+    ├── programs/
+    │   ├── anchor.md                # Anchor program development
+    │   └── pinocchio.md             # Pinocchio (high-performance native)
+    └── surfpool/
+        ├── overview.md              # Surfpool local network guide
+        └── cheatcodes.md            # Surfpool cheatcodes reference
 ```
 
 ## Usage
