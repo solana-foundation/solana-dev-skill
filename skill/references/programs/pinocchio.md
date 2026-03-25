@@ -216,15 +216,30 @@ pub trait PdaSeeds {
         s.push(Seed::from(bump.as_ref()));
         s
     }
+    // Use at initialization to get canonical bump (find loops internally).
     fn derive_address(&self, program_id: &Address) -> (Address, u8) {
         Address::find_program_address(&self.seeds(), program_id)
     }
+    // Use after initialization when bump is already stored (no bump search loop).
+    fn derive_address_with_bump(&self, program_id: &Address, bump: u8) -> Result<Address, ProgramError> {
+        let mut seeds = self.seeds();
+        let bump_seed = [bump];
+        seeds.push(&bump_seed);
+        Address::create_program_address(&seeds, program_id).map_err(|_| ProgramError::InvalidSeeds)
+    }
     fn validate_pda(&self, account: &AccountView, program_id: &Address, bump: u8) -> ProgramResult {
-        let (expected, canonical) = self.derive_address(program_id);
-        if account.address() != &expected || bump != canonical {
+        let expected = self.derive_address_with_bump(program_id, bump)?;
+        if account.address() != &expected {
             return Err(ProgramError::InvalidSeeds);
         }
         Ok(())
+    }
+    fn validate_pda_address(&self, account: &AccountView, program_id: &Address) -> Result<u8, ProgramError> {
+        let (expected, canonical_bump) = self.derive_address(program_id);
+        if account.address() != &expected {
+            return Err(ProgramError::InvalidSeeds);
+        }
+        Ok(canonical_bump)
     }
 }
 

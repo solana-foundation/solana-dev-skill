@@ -283,12 +283,16 @@ let rent = Rent::get()?;
 
 ```rust
 // BAD: Store and trust user-supplied bump
-let pda = create_program_address(&[b"vault", &[user_supplied_bump]], &crate::ID)?;
+let pda = Address::create_program_address(&[b"vault", &[user_supplied_bump]], &crate::ID)?;
 
-// GOOD: Derive canonical bump and store it yourself at init time
-let (pda, canonical_bump) = find_program_address(&[b"vault"], &crate::ID);
-// Store canonical_bump in account data, validate it on every use
-if stored_bump != canonical_bump {
+// GOOD (init): Derive canonical bump once and store it in account data
+let (pda, canonical_bump) = Address::find_program_address(&[b"vault"], &crate::ID);
+state.bump = canonical_bump;
+
+// GOOD (later validation): Derive directly using stored bump (no find loop)
+let expected = Address::create_program_address(&[b"vault", &[state.bump]], &crate::ID)
+    .map_err(|_| ProgramError::InvalidSeeds)?;
+if account.address() != &expected {
     return Err(ProgramError::InvalidSeeds);
 }
 ```
