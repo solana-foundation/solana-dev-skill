@@ -143,8 +143,7 @@ let cpi_accounts = Transfer {
     from: ctx.accounts.from.to_account_info(),
     to: ctx.accounts.to.to_account_info(),
 };
-let cpi_program = ctx.accounts.system_program.to_account_info();
-let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+let cpi_ctx = CpiContext::new(System::id(), cpi_accounts);
 
 transfer(cpi_ctx, amount)?;
 ```
@@ -153,7 +152,7 @@ transfer(cpi_ctx, amount)?;
 ```rust
 let seeds = &[b"vault".as_ref(), &[ctx.bumps.vault]];
 let signer = &[&seeds[..]];
-let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+let cpi_ctx = CpiContext::new_with_signer(System::id(), cpi_accounts, signer);
 ```
 
 ## Error Handling
@@ -307,7 +306,7 @@ See [no-dna.org](https://no-dna.org) for the `NO_DNA` standard.
 
 - **Dependencies** — bump `anchor-lang` and `anchor-spl` to `^1`, and all `solana-*` crates to `^3`.
 - **CPI context** — `CpiContext::new` now takes a program ID (`Pubkey`) instead of a program `AccountInfo`. Remove the program account from the accounts struct.
-- **TypeScript** — replace `@coral-xyz/anchor` with `@anchor-lang/anchor`.
+- **TypeScript** — replace `@coral-xyz/anchor` with `@anchor-lang/core`.
 - **IDL** — IDL management is being moved off program, **mandatory** actions required.
 
 See [anchor/migrating-v0.32-to-v1.md](./anchor/migrating-v0.32-to-v1.md) for the full checklist and before/after examples.

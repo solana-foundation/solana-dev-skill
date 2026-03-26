@@ -9,6 +9,7 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 
 | Anchor Version | Release Date | Solana CLI | Rust Version | Platform Tools | GLIBC Req | Node.js | Key Notes |
 |---|---|---|---|---|---|---|---|
+| **1.0.x** | — | 3.x | 1.79–1.85+ (stable) | v1.52 | ≥2.39 | ≥17 | TS pkg → `@anchor-lang/core`; `anchor test` defaults to surfpool; IDL in Program Metadata; no `solana` CLI shell-out; all `solana-*` deps must be `^3`; `solana-program` removed as project dep; `solana-signer` replaces `solana-sdk` for signing |
 | **0.32.x** | Oct 2025 | 2.1.x+ | 1.79–1.85+ (stable) | v1.50+ | ≥2.39 | ≥17 | Replaces `solana-program` with smaller crates; IDL builds on stable Rust; removes Solang |
 | **0.31.1** | Apr 2025 | 2.0.x–2.1.x | 1.79–1.83 | v1.47+ | ≥2.39 ⚠️ | ≥17 | New Docker image `solanafoundation/anchor`; published under solana-foundation org. **Tested: binary requires GLIBC 2.39, not 2.38** |
 | **0.31.0** | Mar 2025 | 2.0.x–2.1.x | 1.79–1.83 | v1.47+ | ≥2.39 ⚠️ | ≥17 | Solana v2 upgrade; dynamic discriminators; `LazyAccount`; `declare_program!` improvements. **Pre-built binary needs GLIBC 2.39** |
@@ -54,7 +55,7 @@ As of Agave v3.0.0, Anza **no longer publishes the `agave-validator` binary**. O
 
 | OS / Distro | GLIBC Version | Compatible Anchor |
 |---|---|---|
-| **Ubuntu 24.04 (Noble)** | 2.39 | All (0.29–0.32+) |
+| **Ubuntu 24.04 (Noble)** | 2.39 | All (0.29–v1+) |
 | **Ubuntu 22.04 (Jammy)** | 2.35 | 0.29–0.30.x only (build 0.31+ from source) |
 | **Ubuntu 20.04 (Focal)** | 2.31 | 0.29–0.30.x only (build 0.31+ from source) |
 | **Debian 12 (Bookworm)** | 2.36 | 0.29–0.30.x only ⚠️ **Tested: 0.31.1 and 0.32.1 pre-built binaries fail.** Build from source works for Anchor CLI, but `litesvm` 0.5.0 native binary also needs GLIBC 2.38+ |
@@ -73,47 +74,58 @@ anchor: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
 
 **Solutions:**
 1. Upgrade your OS (recommended)
-2. Build Anchor from source: `cargo install --git https://github.com/coral-xyz/anchor --tag v0.31.1 anchor-cli`
+2. Build Anchor from source: `cargo install --git https://github.com/solana-foundation/anchor --tag v1.0.0 anchor-cli` (replace tag with desired version)
 3. Use Docker (see install-guide.md)
 
-## Anchor ↔ solana-program Crate Versions
+## Anchor ↔ Solana Crate Versions
 
-| Anchor | anchor-lang Crate | Uses solana-program | Notes |
+| Anchor | anchor-lang Crate | Project-level solana-* | Notes |
 |---|---|---|---|
-| **0.32.x** | 0.32.x | Replaced by individual `solana-*` crates | `solana-program` no longer a direct dep |
+| **1.0.x** | 1.0.x | `^3` (granular crates) | `solana-program` removed from project deps; use `solana-signer` instead of `solana-sdk` for signing; all `solana-*` must be `^3` |
+| **0.32.x** | 0.32.x | `2` (still `solana-program` or granular v2) | anchor-lang internals use granular crates; `solana-program` still valid in user Cargo.toml |
 | **0.31.x** | 0.31.x | 2.x | Upgraded to Solana v2 crate ecosystem |
 | **0.30.x** | 0.30.x | 1.18.x | Last version using Solana v1 crates |
 | **0.29.x** | 0.29.x | 1.16.x–1.17.x | |
 
-### Solana v2 Crate Ecosystem (Anchor 0.31+)
-Anchor 0.31+ uses the Solana v2 crate structure. The monolithic `solana-program` crate is being split into smaller crates:
+### Solana Granular Crate Ecosystem (Anchor 0.31+)
+Anchor 0.31+ uses the Solana v2+ crate structure. The monolithic `solana-program` crate is being split into smaller crates:
 - `solana-pubkey` / `solana-address`
 - `solana-instruction`
 - `solana-account-info`
 - `solana-msg`
 - `solana-invoke`
 - `solana-entrypoint`
+- `solana-signer` (use instead of `solana-sdk` in v1+)
 - etc.
 
-Anchor 0.32+ fully replaces `solana-program` with these smaller crates. When using `Anchor 0.31.x`, the `anchor build` command warns if you have `solana-program` as a direct dependency — it should come through `anchor-lang`.
+Anchor 0.32+ fully replaces `solana-program` in its own internals. **Anchor v1.0+** goes further: user-facing `Cargo.toml` files must also drop `solana-program` and bump any remaining `solana-*` crates to `^3`. The `anchor build` command warns on mismatched versions.
 
 ## Anchor CLI ↔ anchor-lang Crate Compatibility
 
 The Anchor CLI checks version compatibility with the `anchor-lang` crate used in your project. **Mismatched versions will produce a warning.** Always keep these in sync:
 
 ```toml
-# Cargo.toml
+# Cargo.toml (Anchor v1)
 [dependencies]
-anchor-lang = "0.31.1"
+anchor-lang = "1.0.0"
 
 # Must match CLI:
-# anchor --version → anchor-cli 0.31.1
+# anchor --version → anchor-cli 1.0.0
+```
+
+```toml
+# Cargo.toml (Anchor 0.32.x)
+[dependencies]
+anchor-lang = "0.32.1"
+
+# anchor --version → anchor-cli 0.32.1
 ```
 
 ## SPL Token Crate Versions
 
 | Anchor | anchor-spl | spl-token | spl-token-2022 | spl-associated-token-account |
 |---|---|---|---|---|
+| **1.0.x** | 1.0.x | Latest compatible | Latest compatible | Latest compatible |
 | **0.32.x** | 0.32.x | Latest compatible | Latest compatible | Latest compatible |
 | **0.31.x** | 0.31.x | 6.x | 5.x | 4.x |
 | **0.30.x** | 0.30.x | 4.x–6.x | 3.x–4.x | 3.x |
@@ -121,16 +133,58 @@ anchor-lang = "0.31.1"
 
 ## Node.js / TypeScript Requirements
 
-| Anchor | @coral-xyz/anchor | Node.js | TypeScript |
-|---|---|---|---|
-| **0.32.x** | 0.32.x | ≥17 | 5.x |
-| **0.31.x** | 0.31.x | ≥17 | 5.x |
-| **0.30.x** | 0.30.x | ≥16 | 4.x–5.x |
-| **0.29.x** | 0.29.x | ≥16 | 4.x |
+| Anchor | TS Package | Node.js | TypeScript | Notes |
+|---|---|---|---|---|
+| **1.0.x** | `@anchor-lang/core ^1.0.0` | ≥17 | 5.x | Renamed from `@coral-xyz/anchor`. IDL types now at root of `@anchor-lang/core` (was `@coral-xyz/anchor/dist/cjs/idl`) |
+| **0.32.x** | `@coral-xyz/anchor ^0.32.x` | ≥17 | 5.x | |
+| **0.31.x** | `@coral-xyz/anchor ^0.31.x` | ≥17 | 5.x | |
+| **0.30.x** | `@coral-xyz/anchor ^0.30.x` | ≥16 | 4.x–5.x | |
+| **0.29.x** | `@coral-xyz/anchor ^0.29.x` | ≥16 | 4.x | |
+
+### Anchor v1 TypeScript Package Rename
+
+The npm package moved from `@coral-xyz/anchor` to `@anchor-lang/core`. Update `package.json` and all imports:
+
+```bash
+# Find all occurrences to update
+grep -r "@coral-xyz" --include="*.ts" --include="*.js" --include="package.json" .
+grep -r "dist/cjs/idl" --include="*.ts" --include="*.js" .
+```
+
+```typescript
+// Before (0.32.x)
+import * as anchor from "@coral-xyz/anchor";
+import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
+import { Idl } from "@coral-xyz/anchor/dist/cjs/idl";
+
+// After (v1)
+import * as anchor from "@anchor-lang/core";
+import { Program, AnchorProvider, BN } from "@anchor-lang/core";
+import { Idl } from "@anchor-lang/core";
+```
+
+IDL management now uses `anchor idl init` / `anchor idl upgrade` (CLI) or `@solana-program/program-metadata` (npm) — see [migrating-v0.32-to-v1.md](./anchor/migrating-v0.32-to-v1.md#5-close-legacy-idl-accounts-and-re-publish-deploy).
 
 ## Known Working Combinations (Tested)
 
-### 🟢 Modern (Recommended for new projects — Jan 2026)
+### 🟢 Anchor v1 (Recommended for new projects)
+```
+Anchor CLI: 1.0.0
+anchor-lang: 1.0.0
+anchor-spl: 1.0.0
+solana-* crates: ^3
+litesvm (dev): 0.8.2  (or 0.9.1 if solana-hash 4.0 / solana-vote-interface 5.0)
+anchor-litesvm (dev): 0.3
+TS: @anchor-lang/core ^1.0.0
+Solana CLI: 3.x
+Platform Tools: v1.52
+Rust: 1.79–1.85+
+Node.js: 20.x LTS
+OS: Ubuntu 24.04+ (GLIBC ≥2.39) or macOS 14+
+Test runner: surfpool (default in anchor test)
+```
+
+### 🟢 Modern (Recommended for existing 0.32 projects — Jan 2026)
 ```
 Anchor CLI: 0.31.1
 Solana CLI: 2.1.7 (stable)
@@ -140,7 +194,7 @@ Node.js: 20.x LTS
 OS: Ubuntu 24.04 or macOS 14+
 ```
 
-### 🟢 Latest Anchor (Cutting edge)
+### 🟢 Latest 0.32.x (Cutting edge pre-v1)
 ```
 Anchor CLI: 0.32.1
 Solana CLI: 2.1.7+
@@ -171,6 +225,20 @@ OS: Ubuntu 24.04 or macOS 14+
 ```
 
 ## Testing Tools: LiteSVM / Bankrun Compatibility
+
+### LiteSVM Rust Crate — Version Selection
+
+Use the row that matches your workspace's resolved `solana-*` granular crate versions:
+
+| litesvm (Rust) | solana-* era | Key markers | anchor-litesvm |
+|---|---|---|---|
+| **0.8.2** | `~3.0` | `solana-hash ~3.0`, `solana-vote-interface 4.0`, `solana-system-interface 2.0` | `0.3` (requires `anchor-lang ^1.0.0`, `litesvm ^0.8.2`) |
+| **0.9.1** | `~3.1`–`~3.3` | `solana-hash 4.0`, `solana-vote-interface 5.0`, `solana-system-interface 3.0` | TBD — `anchor-litesvm 0.3` declared `litesvm ^0.8.2`; check for a newer release |
+| **>0.10.0** | `3.3+` | follow latest releases | follow litesvm/anchor-litesvm release |
+
+**Diagnostic:** run `cargo tree -d` — duplicate `solana-*` minor versions in the tree means the selected `litesvm` version is mismatched.
+
+### LiteSVM npm Package (TypeScript tests)
 
 | Tool | npm Package | GLIBC Req | Node.js | Notes |
 |---|---|---|---|---|
