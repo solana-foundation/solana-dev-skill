@@ -5,11 +5,6 @@ description: Step-by-step checklist for upgrading an Anchor program workspace fr
 
 # Anchor v0.32 → v1 Migration
 
-> **Testing against a pre-release?** This guide targets the stable `1.0.0` release. To test against a release candidate, substitute versions as follows wherever they appear:
-> - AVM / CLI install: `avm install 1.0.0-rc.5` / `avm use 1.0.0-rc.5` / `--tag v1.0.0-rc.5`
-> - Cargo deps: use an exact specifier — `anchor-lang = "=1.0.0-rc.5"` (the `=` prefix is required; `^1.0.0-rc.5` will not resolve pre-release builds)
-> - npm: `"@anchor-lang/core": "1.0.0-rc.5"` (no caret needed for a pinned RC)
-
 Full upgrade checklist for an Anchor workspace from v0.32.x to v1. Triage which items apply, then work through them in order.
 
 Items marked **[COMPILE]** will prevent the program from building if not addressed. Items marked **[TS]** affect TypeScript clients. Items marked **[CLI]** affect developer workflow. Items marked **[DEPLOY]** must happen in the right order relative to deployment. Items marked **[CLIENT]** affect the Rust `anchor-client` crate.
@@ -18,15 +13,24 @@ Items marked **[COMPILE]** will prevent the program from building if not address
 
 ## Applying the Migration (order matters)
 
+IDL housekeeping and the program code upgrade are **independent tracks** that can be done in parallel, but have one hard constraint: legacy IDL accounts must be closed with the **v0.32 CLI before deploying v1**.
+
+### Before deploying v1 (old program still live)
+
+A1. **Re-publish IDL to the new v1 location** *(v1 CLI)* — `anchor idl init` / `anchor idl upgrade`, or use `program-metadata` CLI directly (see §5).
+A2. **Update and publish clients** — update any clients that fetch the on-chain IDL to read from the new v1 location, then deploy them.
+A3. **Close legacy IDL accounts** *(v0.32 CLI)* on every cluster (see §5). Deploying the v1 binary or upgrading the CLI first makes this impossible.
+> **Client notice:** for minimal downtime, follow this order — new IDL first, then clients, then close legacy accounts. Clients depending on the old location will continue to work until A3.
+
+### Program code upgrade (requires v1 CLI)
+
 0. **Update toolchain** — bring Anchor CLI, AVM, and Solana CLI to the required versions first (see §0).
 1. **Audit** — run `cargo check` with bumped deps and collect all errors before fixing anything.
 2. **Fix compile errors in order** — deps → CPI context → duplicate accounts → `declare_program!` renames → multiple `#[error_code]` blocks → `Context` lifetime annotations.
 3. **`anchor build`** — confirms Rust is clean.
 4. **Update TS** — rename package imports, rerun `yarn install` / `npm install`.
 5. **Run tests** — `anchor test` (surfpool) or `anchor test -- --features some-feature`.
-6. **Just before deploying** — with the v0.32 CLI still installed, close legacy IDL accounts on every cluster (see §5). Upgrading the CLI or deploying the v1 binary first makes this impossible.
-7. **Upgrade Anchor CLI to v1**, then **deploy** — `anchor deploy`.
-8. **Re-publish IDL** — `anchor idl init` / `anchor idl upgrade`, or use `program-metadata` CLI directly (see §5).
+6. **Deploy** — `anchor deploy`.
 
 ---
 
@@ -434,8 +438,9 @@ const mintAccount = await getMint(connection, mintAddress);
 validator = "solana"
 
 # Or configure surfpool
-[tooling.surfpool]
-logs = false
+[surfpool]
+startup_wait = 5000
+log_level = "info" # default is "none"
 block_production_mode = "clock"        # or "transaction"
 datasource_rpc_url = "https://api.mainnet-beta.solana.com"  # optional fork
 ```
