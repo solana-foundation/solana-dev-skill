@@ -34,26 +34,49 @@ cd solana-dev-skill
 ## Skill Structure
 
 ```
-skill/
-├── SKILL.md                         # Main skill definition (required)
-└── references/
-    ├── frontend-framework-kit.md    # UI patterns with framework-kit
-    ├── kit-web3-interop.md          # Kit ↔ web3.js boundary patterns
-    ├── testing.md                   # Testing (LiteSVM/Mollusk/Surfpool)
-    ├── idl-codegen.md               # IDL and client generation
-    ├── payments.md                  # Payments with Commerce Kit
-    ├── security.md                  # Security vulnerabilities & prevention
-    ├── resources.md                 # Curated reference links
-    ├── compatibility-matrix.md      # Version compatibility tables (Anchor/Solana/Rust/GLIBC)
-    ├── common-errors.md             # Error message → solution mappings
-    ├── confidential-transfers.md    # Confidential transfers (Token-2022 ZK)
-    ├── programs/
-    │   ├── anchor.md                # Anchor program development
-    │   └── pinocchio.md             # Pinocchio (high-performance native)
-    └── surfpool/
-        ├── overview.md              # Surfpool local network guide
-        └── cheatcodes.md            # Surfpool cheatcodes reference
+skills/
+├── solana-anchor/
+│   └── SKILL.md
+├── solana-client/
+│   └── SKILL.md
+├── solana-payments/
+│   └── SKILL.md
+├── solana-pinocchio/
+│   └── SKILL.md
+├── solana-security/
+│   └── SKILL.md
+└── solana-testing/
+    └── SKILL.md
+
+references/
+├── frontend-framework-kit.md
+├── kit-web3-interop.md
+├── testing.md
+├── idl-codegen.md
+├── payments.md
+├── security.md
+├── resources.md
+├── compatibility-matrix.md
+├── common-errors.md
+├── confidential-transfers.md
+├── programs/
+│   ├── anchor.md
+│   └── pinocchio.md
+└── surfpool/
+    ├── overview.md
+    └── cheatcodes.md
 ```
+
+## Available Skills
+
+This repository provides modular Solana development skills:
+
+- **solana-anchor** — Develop Solana programs using the Anchor framework
+- **solana-pinocchio** — Build high-performance native programs
+- **solana-client** — Wallet integration, RPC clients, and transaction building
+- **solana-testing** — LiteSVM, Mollusk, and Surfpool testing strategies
+- **solana-security** — Security guardrails and vulnerability prevention
+- **solana-payments** — Token transfers and Token-2022 confidential payments
 
 ## Usage
 
@@ -89,14 +112,14 @@ Once installed, Claude Code will automatically use this skill when you ask about
 
 This skill encodes opinionated best practices:
 
-| Layer | Default Choice | Alternative |
-|-------|---------------|-------------|
-| UI Framework | framework-kit | ConnectorKit (headless) |
-| Client SDK | @solana/kit | @solana/web3-compat (boundary) |
-| Program Framework | Anchor | Pinocchio (performance) |
-| Unit Testing | LiteSVM / Mollusk | - |
-| Integration Testing | Surfpool | solana-test-validator |
-| Client Generation | Codama | Kinobi (Umi) |
+| Layer               | Default Choice    | Alternative                    |
+| ------------------- | ----------------- | ------------------------------ |
+| UI Framework        | framework-kit     | ConnectorKit (headless)        |
+| Client SDK          | @solana/kit       | @solana/web3-compat (boundary) |
+| Program Framework   | Anchor            | Pinocchio (performance)        |
+| Unit Testing        | LiteSVM / Mollusk | -                              |
+| Integration Testing | Surfpool          | solana-test-validator          |
+| Client Generation   | Codama            | Kinobi (Umi)                   |
 
 ## Content Sources
 
@@ -110,7 +133,7 @@ This skill incorporates best practices from:
 
 ## Progressive Disclosure
 
-The skill uses Claude Code's progressive disclosure pattern. The main `SKILL.md` provides core guidance, and Claude reads the specialized markdown files only when needed for specific tasks.
+Each skill has its own `SKILL.md` file. Shared documentation is located in the `references/` directory. Claude Code loads the relevant reference files only when needed for specific tasks.
 
 ## Contributing
 

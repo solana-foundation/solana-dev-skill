@@ -7,7 +7,9 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_NAME="solana-dev"
-SOURCE_DIR="$SCRIPT_DIR/skill"
+
+SOURCE_DIR="$SCRIPT_DIR/skills"
+REFERENCES_DIR="$SCRIPT_DIR/references"
 
 # Default to personal installation
 INSTALL_PATH="$HOME/.claude/skills/$SKILL_NAME"
@@ -44,22 +46,21 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if source directory exists
+# Check directories
 if [ ! -d "$SOURCE_DIR" ]; then
-    echo "Error: Source directory '$SOURCE_DIR' not found"
+    echo "Error: skills directory not found"
     exit 1
 fi
 
-# Check if SKILL.md exists
-if [ ! -f "$SOURCE_DIR/SKILL.md" ]; then
-    echo "Error: SKILL.md not found in '$SOURCE_DIR'"
+if [ ! -d "$REFERENCES_DIR" ]; then
+    echo "Error: references directory not found"
     exit 1
 fi
 
-# Create parent directory if needed
+# Create parent directory
 mkdir -p "$(dirname "$INSTALL_PATH")"
 
-# Check if destination already exists
+# Check if destination exists
 if [ -d "$INSTALL_PATH" ]; then
     echo "Warning: '$INSTALL_PATH' already exists"
     read -p "Overwrite? (y/N) " -n 1 -r
@@ -71,17 +72,22 @@ if [ -d "$INSTALL_PATH" ]; then
     rm -rf "$INSTALL_PATH"
 fi
 
-# Copy skill files
-echo "Installing Solana Dev Skill..."
+# Install
+echo "Installing Solana Dev Skills..."
+mkdir -p "$INSTALL_PATH"
+
 cp -r "$SOURCE_DIR" "$INSTALL_PATH"
+cp -r "$REFERENCES_DIR" "$INSTALL_PATH"
 
 echo ""
 echo "Successfully installed to: $INSTALL_PATH"
 echo ""
+
 echo "Installed files:"
 find "$INSTALL_PATH" -type f -name "*.md" | while read -r file; do
     echo "  - $(basename "$file")"
 done
+
 echo ""
-echo "The skill is now available in Claude Code."
-echo "Try asking about Solana development to activate it!"
+echo "The skills are now available in Claude Code."
+echo "Try asking about Solana development to activate them!"
