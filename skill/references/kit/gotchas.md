@@ -11,33 +11,35 @@ Common type errors and runtime pitfalls with their fixes.
 
 ### Plugin Ordering — Type Error
 
-**Cause:** Plugins installed before their dependencies.
+**Cause:** Plugins installed before their dependencies. `solanaRpc` / `solanaLocalRpc` / `solanaDevnetRpc` / `litesvm` all require a `payer` to be installed first; low-level `rpcTransactionPlanner` / `rpcTransactionPlanExecutor` require `rpc` and `payer`.
 
 ```ts
-// ❌ Type error — planner requires rpc
-createEmptyClient()
-  .use(rpcTransactionPlanner())
-  .use(rpc(url));
+// ❌ Type error — solanaRpc requires payer
+createClient()
+  .use(solanaRpc({ rpcUrl: url }))
+  .use(signer(mySigner));
 
-// ✅ Fix: Install dependencies first
-createEmptyClient()
-  .use(rpc(url))
-  .use(payer(signer))
-  .use(rpcTransactionPlanner())
-  .use(planAndSendTransactions());
+// ✅ Fix: signer first (sets payer + identity), then RPC bundle
+createClient()
+  .use(signer(mySigner))
+  .use(solanaRpc({ rpcUrl: url }));
 ```
 
 ### Forgetting to `await` Async Client
 
-**Cause:** Some plugins (e.g., `payerFromFile`, `generatedPayer`, `createLocalClient`) are async.
+**Cause:** Some plugins (e.g., `signerFromFile`, `generatedSigner`, `generatedSignerWithSol`) are async, and `.use()` automatically threads the promise through the chain.
 
 ```ts
 // ❌ Runtime error — client is a Promise, not a client
-const client = createLocalClient();
+const client = createClient()
+  .use(signerFromFile('./id.json'))
+  .use(solanaLocalRpc());
 client.sendTransaction([ix]); // TypeError: not a function
 
 // ✅ Fix: await the client
-const client = await createLocalClient();
+const client = await createClient()
+  .use(signerFromFile('./id.json'))
+  .use(solanaLocalRpc());
 await client.sendTransaction([ix]);
 ```
 
@@ -192,8 +194,8 @@ if (!account.exists) {
 
 | Gotcha | Fix |
 |--------|-----|
-| Plugin ordering type error | Install dependencies before dependents |
-| Forgot to `await` async client | `const client = await createLocalClient()` |
+| Plugin ordering type error | Install dependencies before dependents (`signer()` before `solanaRpc`/`litesvm`) |
+| Forgot to `await` async client | `const client = await createClient().use(signerFromFile(...)).use(solanaLocalRpc())` |
 | `IInstruction` doesn't exist | Use `Instruction` from `@solana/kit` |
 | "Transaction message must be signed" | `assertTransactionMessageIsFullySigned(msg)` |
 | "Missing blockhash lifetime" | `assertTransactionMessageHasBlockhashLifetime(msg)` |

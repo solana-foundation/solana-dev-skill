@@ -390,6 +390,8 @@ export type ClientPlugin<TInput extends object, TOutput extends Promise<object> 
 ### Basic Plugin
 
 ```ts
+import { createClient } from '@solana/kit';
+
 function apple() {
   return <T extends object>(client: T) => ({
     ...client,
@@ -397,7 +399,7 @@ function apple() {
   });
 }
 
-const client = createEmptyClient().use(apple());
+const client = createClient().use(apple());
 client.fruit; // 'apple'
 ```
 
@@ -413,8 +415,8 @@ function appleTart() {
   });
 }
 
-createEmptyClient().use(apple()).use(appleTart()); // ✅ Ok
-createEmptyClient().use(appleTart());              // ❌ TypeScript error
+createClient().use(apple()).use(appleTart()); // ✅ Ok
+createClient().use(appleTart());              // ❌ TypeScript error
 ```
 
 ### Async Plugin
@@ -428,7 +430,7 @@ function magicFruit() {
 }
 
 // use() handles awaiting automatically
-const client = await createEmptyClient().use(magicFruit()).use(apple());
+const client = await createClient().use(magicFruit()).use(apple());
 ```
 
 ---
@@ -442,13 +444,13 @@ The plugin system enables building purpose-built clients for specific domains. H
 [Kora](https://github.com/solana-foundation/kora) builds a gasless payment client by composing standard plugins with a custom Kora plugin:
 
 ```ts
-import { createEmptyClient } from '@solana/kit';
+import { createClient } from '@solana/kit';
 import { planAndSendTransactions, transactionPlanExecutor, transactionPlanner } from '@solana/kit-plugin-instruction-plan';
-import { payer } from '@solana/kit-plugin-payer';
+import { payer } from '@solana/kit-plugin-signer';
 import { rpc } from '@solana/kit-plugin-rpc';
 
 export async function createKitKoraClient(config) {
-  return createEmptyClient()
+  return createClient()
     .use(rpc(config.rpcUrl))
     .use(koraPlugin({ apiKey: config.apiKey, endpoint: config.endpoint }))
     .use(payer(payerSigner))
@@ -469,21 +471,21 @@ Key pattern: Standard plugins (`rpc`, `payer`, `planAndSendTransactions`) combin
 [Solana Pay](https://github.com/amilz/solana-pay) builds role-specific clients — a read-only merchant client and a full wallet client:
 
 ```ts
-import { createEmptyClient } from '@solana/kit';
+import { createClient } from '@solana/kit';
 import { planAndSendTransactions } from '@solana/kit-plugin-instruction-plan';
-import { payer } from '@solana/kit-plugin-payer';
+import { payer } from '@solana/kit-plugin-signer';
 import { rpc, rpcTransactionPlanExecutor, rpcTransactionPlanner } from '@solana/kit-plugin-rpc';
 
 // Merchant: read-only, no payer needed
 function createMerchantClient(config) {
-  return createEmptyClient()
+  return createClient()
     .use(rpc(config.rpcUrl))
     .use(solanaPayMerchant()); // Adds client.pay.encodeURL, findReference, validateTransfer
 }
 
 // Wallet: full tx capabilities
 function createWalletClient(config) {
-  return createEmptyClient()
+  return createClient()
     .use(rpc(config.rpcUrl))
     .use(payer(config.payer))
     .use(rpcTransactionPlanner())
@@ -507,8 +509,8 @@ Key pattern: Same base plugins, different compositions for different roles. Doma
 
 When building a domain-specific client:
 
-1. Start with `createEmptyClient()` from `@solana/kit`
-2. Add standard plugins for capabilities you need (`rpc`, `payer`, `planAndSendTransactions`)
+1. Start with `createClient()` from `@solana/kit`
+2. Add standard plugins for capabilities you need (`rpc`, `payer` from `@solana/kit-plugin-signer`, `planAndSendTransactions`)
 3. Swap `transactionPlanner` / `transactionPlanExecutor` if you need custom tx lifecycle (like Kora)
 4. Add your domain plugin(s) that extend the client with domain-specific methods
 5. Export a factory function (`createMyClient(config)`) for consumers
