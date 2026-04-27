@@ -30,7 +30,9 @@ Use this Skill when the user asks for:
 - Prefer Wallet Standard discovery/connect via the framework-kit client.
 
 2) **SDK: @solana/kit first**
-- Start with `createClient` / `createLocalClient` from `@solana/kit-client-rpc` for RPC + transaction sending.
+- Build clients with `createClient()` from `@solana/kit`, then `.use(...)` plugins:
+  `createClient().use(signer(mySigner)).use(solanaRpc({ rpcUrl }))` (or `solanaLocalRpc` / `solanaDevnetRpc` / `solanaMainnetRpc` from `@solana/kit-plugin-rpc`).
+- Default to `signer()` / `signerFromFile()` / `generatedSignerWithSol()` from `@solana/kit-plugin-signer` — they set both `payer` and `identity` to the same keypair (the common case). Reach for the role-specific variants (`payer()` + `identity()`) only when fees and authority must come from different keypairs.
 - Use `@solana-program/*` program plugins (e.g., `tokenProgram()`) for fluent instruction APIs.
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
 

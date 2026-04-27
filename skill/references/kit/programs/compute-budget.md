@@ -17,7 +17,7 @@ Correctly budgeting compute units for your transaction increases the probability
 
 ### Set Compute Unit Limit
 
-If you're using `createClient`/`createLocalClient` from `@solana/kit-client-rpc`, CU estimation is handled automatically via `sendTransaction()` — you don't need this. Use the manual instructions below when building transactions with `pipe()` or when you need direct control. See [overview.md](../overview.md) and [plugins.md](../plugins.md).
+If you're using a Kit client built with the `solanaRpc` / `solanaLocalRpc` / `solanaDevnetRpc` / `solanaMainnetRpc` plugins (from `@solana/kit-plugin-rpc`), CU estimation is handled automatically via `client.sendTransaction()` — you don't need this. Use the manual instructions below when building transactions with `pipe()` or when you need direct control. See [overview.md](../overview.md) and [plugins.md](../plugins.md).
 
 Always set based on simulation — overestimate wastes block space, underestimate fails the transaction.
 
