@@ -30,7 +30,7 @@ import { signerFromFile } from '@solana/kit-plugin-signer';
 // `signerFromFile` sets BOTH payer and identity to the loaded keypair (the common case).
 // Other options:
 //   - `signer(existingSigner)`              // explicit signer you already hold
-//   - `generatedSignerWithSol(lamports(n))` // generate + airdrop a fresh keypair (must come AFTER solanaLocalRpc, or use rpcAirdrop first)
+//   - `generatedSigner()` + `airdropSigner(lamports(n))` // fresh local/devnet signer, funded after RPC is installed
 //   - `payer(...)` + `identity(...)`        // when fees and authority come from different keypairs
 const client = await createClient()
   .use(signerFromFile('~/.config/solana/id.json'))
@@ -59,11 +59,14 @@ await client.sendTransaction([myInstruction]);
 ### Testing with LiteSVM
 
 ```ts
-import { createClient } from '@solana/kit';
+import { createClient, lamports } from '@solana/kit';
 import { litesvm } from '@solana/kit-plugin-litesvm';
-import { signer } from '@solana/kit-plugin-signer';
+import { airdropSigner, generatedSigner } from '@solana/kit-plugin-signer';
 
-const client = createClient().use(signer(mySigner)).use(litesvm());
+const client = await createClient()
+  .use(generatedSigner())
+  .use(litesvm())
+  .use(airdropSigner(lamports(1_000_000_000n)));
 
 client.svm.addProgramFromFile(myProgramAddress, 'program.so');
 await client.sendTransaction([myInstruction]);
@@ -263,7 +266,7 @@ See [codama.md](codama.md) for naming conventions and patterns.
 |---------|---------|
 | `@solana/kit` | Main SDK, re-exports all sub-packages, exports `createClient` |
 | `@solana/kit-plugin-rpc` | All-in-one RPC plugins: `solanaRpc`, `solanaMainnetRpc`, `solanaDevnetRpc`, `solanaLocalRpc` (plus low-level `rpc`, `rpcAirdrop`, `rpcTransactionPlanner`, `rpcTransactionPlanExecutor`) |
-| `@solana/kit-plugin-signer` | Signer plugins. Default `signer*` variants set both `payer` and `identity` (`signer`, `generatedSigner`, `generatedSignerWithSol`, `signerFromFile`, `airdropSigner`). Role-specific `payer*` and `identity*` variants for when the two roles differ. |
+| `@solana/kit-plugin-signer` | Signer plugins. Default `signer*` variants set both `payer` and `identity` (`signer`, `generatedSigner`, `signerFromFile`). Use `airdropSigner` to fund an already-installed signer; use `generatedSignerWithSol` only when an airdrop function is already installed. Role-specific `payer*` and `identity*` variants for when the two roles differ. |
 | `@solana/kit-plugin-litesvm` | All-in-one `litesvm` plugin (Node.js only) for in-memory testing |
 | `@solana/kit-plugin-airdrop` | Standalone airdrop plugin (most users get this via `solanaDevnetRpc`/`solanaLocalRpc`) |
 | `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions` and instruction batching primitives |

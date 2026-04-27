@@ -67,11 +67,14 @@ npm install @solana/kit @solana/kit-plugin-litesvm @solana/kit-plugin-signer
 ```
 
 ```ts
-import { createClient } from '@solana/kit';
+import { createClient, lamports } from '@solana/kit';
 import { litesvm } from '@solana/kit-plugin-litesvm';
-import { signer } from '@solana/kit-plugin-signer';
+import { airdropSigner, generatedSigner } from '@solana/kit-plugin-signer';
 
-const client = createClient().use(signer(mySigner)).use(litesvm());
+const client = await createClient()
+  .use(generatedSigner())
+  .use(litesvm())
+  .use(airdropSigner(lamports(1_000_000_000n)));
 
 client.svm.setAccount(myTestAccount);
 client.svm.addProgramFromFile(myProgramAddress, 'program.so');
@@ -111,18 +114,23 @@ In most apps both roles are the same keypair, so **default to the `signer*` vari
 |---|---|
 | `signer(s)` / `payer(s)` / `identity(s)` | Install an existing `TransactionSigner` |
 | `generatedSigner()` / `generatedPayer()` / `generatedIdentity()` | Async; generate a new keypair |
-| `generatedSignerWithSol(amount)` / `generatedPayerWithSol(amount)` / `generatedIdentityWithSol(amount)` | Async; generate + airdrop. Requires an airdrop function already on the client (use after `solanaLocalRpc`/`solanaDevnetRpc`/`rpcAirdrop`) |
+| `generatedSignerWithSol(amount)` / `generatedPayerWithSol(amount)` / `generatedIdentityWithSol(amount)` | Async; generate + airdrop. Requires an airdrop function already on the client (for low-level composition, install `rpcAirdrop()` first). |
 | `signerFromFile(path)` / `payerFromFile(path)` / `identityFromFile(path)` | Async; load keypair from a JSON file |
-| `airdropSigner(amount)` / `airdropPayer(amount)` / `airdropIdentity(amount)` | Airdrop SOL to an already-installed signer |
+| `airdropSigner(amount)` / `airdropPayer(amount)` / `airdropIdentity(amount)` | Airdrop SOL to an already-installed signer. Use with all-in-one `solanaLocalRpc` / `solanaDevnetRpc` / `litesvm` when the RPC plugin needs a payer first. |
 
 ```ts
 import { createClient, lamports } from '@solana/kit';
-import { rpcAirdrop, solanaRpcConnection } from '@solana/kit-plugin-rpc';
+import {
+  rpcAirdrop,
+  solanaRpcConnection,
+  solanaRpcSubscriptionsConnection,
+} from '@solana/kit-plugin-rpc';
 import { generatedSignerWithSol } from '@solana/kit-plugin-signer';
 
 // Airdrop function must exist before generatedSignerWithSol
 const client = await createClient()
-  .use(solanaRpcConnection({ rpcUrl: 'http://127.0.0.1:8899' }))
+  .use(solanaRpcConnection('http://127.0.0.1:8899'))
+  .use(solanaRpcSubscriptionsConnection('ws://127.0.0.1:8900'))
   .use(rpcAirdrop())
   .use(generatedSignerWithSol(lamports(10_000_000_000n)));
 ```

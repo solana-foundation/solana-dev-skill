@@ -37,10 +37,11 @@ Use this Skill when the user asks for:
     .use(solanaRpc({ rpcUrl }));
   // or solanaLocalRpc / solanaDevnetRpc / solanaMainnetRpc from @solana/kit-plugin-rpc
   ```
-- Default to `signer()` / `signerFromFile()` / `generatedSignerWithSol()` from
+- Default to `signer()` / `signerFromFile()` / `generatedSigner()` from
   `@solana/kit-plugin-signer` — they set both `payer` and `identity` to the same keypair (the
-  common case). Reach for the role-specific variants (`payer()` + `identity()`) only when fees
-  and authority must come from different keypairs.
+  common case). For fresh local/devnet signers, install the RPC/LiteSVM plugin after
+  `generatedSigner()`, then fund with `airdropSigner(...)`. Reach for the role-specific variants
+  (`payer()` + `identity()`) only when fees and authority must come from different keypairs.
 - Use `@solana-program/*` program plugins (e.g., `tokenProgram()`) for fluent instruction APIs.
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
 
