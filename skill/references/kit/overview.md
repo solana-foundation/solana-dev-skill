@@ -88,19 +88,7 @@ After applying `solanaRpc` / `solanaLocalRpc` / `solanaDevnetRpc` / `solanaMainn
 | `client.airdrop(address, lamports)` | Faucet (devnet/local/litesvm only) |
 | `client.svm` | LiteSVM instance (litesvm plugin only) |
 
-**`solanaRpc` config options** (passed to `solanaRpc({ ... })`):
-
-| Option | Description |
-|--------|-------------|
-| `rpcUrl` | Solana RPC endpoint (required) |
-| `rpcSubscriptionsUrl` | WS endpoint (defaults to `rpcUrl` with `http`→`ws`) |
-| `rpcConfig` | Forwarded to `createSolanaRpc` |
-| `rpcSubscriptionsConfig` | Forwarded to `createSolanaRpcSubscriptions` |
-| `transactionConfig` | Tx planner options (e.g., priority fees) |
-| `maxConcurrency` | Concurrent transaction limit (default: 10) |
-| `skipPreflight` | Always skip preflight simulation (default: false) |
-
-See [plugins.md](plugins.md) for the full plugin catalog and custom composition.
+`solanaRpc({ ... })` accepts `rpcUrl` (required) plus `rpcSubscriptionsUrl`, `transactionConfig` (priority fees), `maxConcurrency`, `skipPreflight`, and the underlying `rpcConfig` / `rpcSubscriptionsConfig`. See [plugins.md](plugins.md) for the full options table, plugin catalog, and custom composition.
 
 ## Core Concepts
 

@@ -85,26 +85,11 @@ await client.sendTransaction([myInstruction]);
 
 ## Client API Surface
 
-After applying an all-in-one RPC/LiteSVM plugin and a payer:
+See [overview.md](overview.md#client-api) for the full surface (`client.rpc`, `client.payer`, `client.sendTransaction`, etc.). Plugin-specific additions:
 
-```ts
-client.rpc                  // RPC methods (getBalance, getAccountInfo, etc.)
-client.rpcSubscriptions     // WebSocket subscriptions (RPC plugins only)
-client.payer                // TransactionSigner fee payer
-client.identity             // Authority signer (if signer()/identity() used)
-client.transactionPlanner   // Converts instructions → transaction messages
-client.transactionPlanExecutor // Sends planned transactions
-client.planTransaction(s)   // Plan without executing
-client.sendTransaction(s)   // Plan + sign + send in one call
-client.getMinimumBalance(dataSize) // Rent-exempt minimum
-```
-
-`solanaDevnetRpc`, `solanaLocalRpc`, and `litesvm` additionally expose:
-```ts
-client.airdrop(address, lamports) // Faucet (devnet/local/svm only)
-```
-
-LiteSVM additionally exposes `client.svm` for direct LiteSVM access.
+- `solanaDevnetRpc` / `solanaLocalRpc` / `litesvm` add `client.airdrop(address, lamports)`.
+- `litesvm` additionally adds `client.svm` for direct LiteSVM access.
+- The low-level composition (Custom Client Composition below) also exposes `client.transactionPlanner` and `client.transactionPlanExecutor` directly.
 
 ---
 
