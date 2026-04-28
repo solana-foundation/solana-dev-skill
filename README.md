@@ -36,11 +36,15 @@ cd solana-dev-skill
 ```
 skill/
 ├── SKILL.md                         # Main skill definition (required)
+├── scripts/
+│   ├── package.json                 # Codama + @solana/kit dependencies
+│   ├── fetch-idl.mjs               # Fetch on-chain Anchor IDL by program ID
+│   └── generate-sdk.mjs            # Generate SDK in JS/Rust/Go from IDL
 └── references/
     ├── frontend-framework-kit.md    # UI patterns with framework-kit
     ├── kit-web3-interop.md          # Kit ↔ web3.js boundary patterns
     ├── testing.md                   # Testing (LiteSVM/Mollusk/Surfpool)
-    ├── idl-codegen.md               # IDL and client generation
+    ├── idl-codegen.md               # IDL and SDK generation (+ script docs)
     ├── payments.md                  # Payments with Commerce Kit
     ├── security.md                  # Security vulnerabilities & prevention
     ├── resources.md                 # Curated reference links
