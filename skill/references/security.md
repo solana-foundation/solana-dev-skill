@@ -38,7 +38,7 @@ pub account: UncheckedAccount<'info>,
 **Pinocchio Prevention**:
 
 ```rust
-if !account.is_owned_by(&crate::ID) {
+if !account.owned_by(&crate::ID) {
     return Err(ProgramError::InvalidAccountOwner);
 }
 ```
@@ -98,7 +98,7 @@ if ctx.accounts.token_program.key() != &spl_token::ID {
 **Pinocchio Prevention**:
 
 ```rust
-if self.accounts.token_program.key() != &pinocchio_token::ID {
+if self.accounts.token_program.address() != &pinocchio_token::ID {
     return Err(ProgramError::IncorrectProgramId);
 }
 ```
@@ -130,7 +130,7 @@ if ctx.accounts.account.is_initialized {
 
 ```rust
 // Check discriminator before initialization
-let data = account.try_borrow_data()?;
+let data = account.try_borrow()?;
 if data[0] == ACCOUNT_DISCRIMINATOR {
     return Err(ProgramError::AccountAlreadyInitialized);
 }
@@ -174,7 +174,7 @@ seeds = [b"pool", vault.key().as_ref(), owner.key().as_ref()]
 
 ```rust
 // Validate discriminator before processing
-let data = account.try_borrow_data()?;
+let data = account.try_borrow()?;
 if data[0] != EXPECTED_DISCRIMINATOR {
     return Err(ProgramError::InvalidAccountData);
 }
@@ -197,7 +197,7 @@ if ctx.accounts.account_1.key() == ctx.accounts.account_2.key() {
 }
 
 // Pinocchio
-if self.accounts.account_1.key() == self.accounts.account_2.key() {
+if self.accounts.account_1.address() == self.accounts.account_2.address() {
     return Err(ProgramError::InvalidArgument);
 }
 ```
@@ -218,9 +218,10 @@ if self.accounts.account_1.key() == self.accounts.account_2.key() {
 pub account: Account<'info, Data>,
 
 // Pinocchio: Full secure closure
-pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult {
-    // 1. Add lamports
-    destination.set_lamports(destination.lamports() + account.lamports())?;
+pub fn close(account: &mut AccountView, destination: &mut AccountView) -> ProgramResult {
+    // 1. Drain lamports (set_lamports returns ())
+    destination.set_lamports(destination.lamports() + account.lamports());
+    account.set_lamports(0);
 
     // 2. Close
     account.close()
@@ -243,8 +244,8 @@ pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult 
 pub account: Account<'info, Data>,
 
 // Pinocchio: Manual validation
-let data = Config::from_bytes(&account.try_borrow_data()?)?;
-if data.authority != *authority.key() {
+let data = Config::from_bytes(&account.try_borrow()?)?;
+if data.authority != *authority.address() {
     return Err(ProgramError::InvalidAccountData);
 }
 ```
@@ -277,21 +278,21 @@ let rent = Rent::get()?;
 
 **Risk**: Non-canonical bumps can be used to derive valid but unintended PDAs.
 
-**Attack**: `create_program_address` accepts any valid bump, but `find_program_address` returns the **canonical** (highest valid) bump. If your program stores a user-supplied bump and uses it directly, an attacker may store a non-canonical bump that derives a different address under certain conditions.
+**Attack**: `Address::derive_address` accepts any valid bump, but `Address::derive_program_address` returns the **canonical** (highest valid) bump. If your program stores a user-supplied bump and uses it directly, an attacker may store a non-canonical bump that derives a different address under certain conditions.
 
 **Prevention**:
 
 ```rust
 // BAD: Store and trust user-supplied bump
-let pda = Address::create_program_address(&[b"vault", &[user_supplied_bump]], &crate::ID)?;
+let pda = Address::derive_address(&[b"vault"], Some(user_supplied_bump), &crate::ID);
 
 // GOOD (init): Derive canonical bump once and store it in account data
-let (pda, canonical_bump) = Address::find_program_address(&[b"vault"], &crate::ID);
+let (pda, canonical_bump) = Address::derive_program_address(&[b"vault"], &crate::ID)
+    .ok_or(ProgramError::InvalidSeeds)?;
 state.bump = canonical_bump;
 
 // GOOD (later validation): Derive directly using stored bump (no find loop)
-let expected = Address::create_program_address(&[b"vault", &[state.bump]], &crate::ID)
-    .map_err(|_| ProgramError::InvalidSeeds)?;
+let expected = Address::derive_address(&[b"vault"], Some(state.bump), &crate::ID);
 if account.address() != &expected {
     return Err(ProgramError::InvalidSeeds);
 }

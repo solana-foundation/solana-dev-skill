@@ -25,7 +25,7 @@ Before building/deploying, verify lib.rs contains all required components:
 
 - [ ] `entrypoint!(process_instruction)` macro
 - [ ] `pub const ID: Address = Address::new_from_array([...])` with correct program ID
-- [ ] `fn process_instruction(program_id: &Address, accounts: &[AccountView], data: &[u8]) -> ProgramResult`
+- [ ] `fn process_instruction(program_id: &Address, accounts: &mut [AccountView], data: &[u8]) -> ProgramResult`
 - [ ] Instruction routing logic with proper discriminators
 - [ ] `pub mod instructions; pub use instructions::*;`
 
@@ -44,7 +44,7 @@ entrypoint!(process_instruction);
 
 fn process_instruction(
     _program_id: &Address,
-    accounts: &[AccountView],
+    accounts: &mut [AccountView],
     instruction_data: &[u8],
 ) -> ProgramResult {
     match instruction_data.split_first() {
@@ -63,18 +63,18 @@ Single-byte discriminators support 255 instructions; use two bytes for up to 65,
 
 ```rust
 entrypoint!(process_instruction);
-// Remove nostd_panic_handler!() - std provides panic handling
+// entrypoint! already declares default_panic_handler! and default_allocator!
 ```
 
 **For no_std environments:**
 
 ```rust
 #![no_std]
-entrypoint!(process_instruction);
+program_entrypoint!(process_instruction);
 nostd_panic_handler!();
 ```
 
-**Critical**: Never include both - causes duplicate lang item error in SBF builds.
+**Critical**: Never declare two panic handlers (or two allocators) in the same program — causes a duplicate lang item error. Because `entrypoint!` already declares them, `program_entrypoint!` is the right choice when you need a custom panic handler or allocator.
 
 ### Program ID Declaration
 
@@ -209,33 +209,23 @@ pub trait InstructionData<'a>: Sized {
 
 pub trait PdaSeeds {
     const PREFIX: &'static [u8];
-    fn seeds(&self) -> Vec<&[u8]>;
-    // Returns seeds + bump slice, ready for invoke_signed
-    fn seeds_with_bump<'a>(&'a self, bump: &'a [u8; 1]) -> Vec<Seed<'a>> {
-        let mut s: Vec<Seed> = self.seeds().into_iter().map(Seed::from).collect();
-        s.push(Seed::from(bump.as_ref()));
-        s
-    }
     // Use at initialization to get canonical bump (find loops internally).
-    fn derive_address(&self, program_id: &Address) -> (Address, u8) {
-        Address::find_program_address(&self.seeds(), program_id)
-    }
+    // Implementers build their own fixed-size seed array; the new
+    // `Address::derive_*` API takes `&[&[u8]; N]`, not `&[&[u8]]`.
+    fn derive_address(&self, program_id: &Address) -> Result<(Address, u8), ProgramError>;
     // Use after initialization when bump is already stored (no bump search loop).
-    fn derive_address_with_bump(&self, program_id: &Address, bump: u8) -> Result<Address, ProgramError> {
-        let mut seeds = self.seeds();
-        let bump_seed = [bump];
-        seeds.push(&bump_seed);
-        Address::create_program_address(&seeds, program_id).map_err(|_| ProgramError::InvalidSeeds)
-    }
+    // Pass the bump only via the `Option<u8>` argument of `Address::derive_address` —
+    // do not also include it in the seeds array, or it gets hashed twice.
+    fn derive_address_with_bump(&self, program_id: &Address, bump: u8) -> Address;
     fn validate_pda(&self, account: &AccountView, program_id: &Address, bump: u8) -> ProgramResult {
-        let expected = self.derive_address_with_bump(program_id, bump)?;
+        let expected = self.derive_address_with_bump(program_id, bump);
         if account.address() != &expected {
             return Err(ProgramError::InvalidSeeds);
         }
         Ok(())
     }
     fn validate_pda_address(&self, account: &AccountView, program_id: &Address) -> Result<u8, ProgramError> {
-        let (expected, canonical_bump) = self.derive_address(program_id);
+        let (expected, canonical_bump) = self.derive_address(program_id)?;
         if account.address() != &expected {
             return Err(ProgramError::InvalidSeeds);
         }
@@ -285,9 +275,9 @@ macro_rules! define_instruction {
             }
         }
 
-        impl<'a> TryFrom<(&'a [u8], &'a [AccountView])> for $name<'a> {
+        impl<'a> TryFrom<(&'a [u8], &'a mut [AccountView])> for $name<'a> {
             type Error = ProgramError;
-            fn try_from((data, accounts): (&'a [u8], &'a [AccountView])) -> Result<Self, Self::Error> {
+            fn try_from((data, accounts): (&'a [u8], &'a mut [AccountView])) -> Result<Self, Self::Error> {
                 Ok(Self {
                     accounts: <$accounts>::try_from(accounts)?,
                     data: <$data>::try_from(data)?,
@@ -308,15 +298,15 @@ Pinocchio requires manual validation. Wrap all checks in `TryFrom` implementatio
 
 ```rust
 pub struct DepositAccounts<'a> {
-    pub owner: &'a AccountView,
-    pub vault: &'a AccountView,
+    pub owner: &'a mut AccountView,
+    pub vault: &'a mut AccountView,
     pub system_program: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for DepositAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for DepositAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [owner, vault, system_program, _remaining @ ..] = accounts else {
             return Err(ProgramError::NotEnoughAccountKeys);
         };
@@ -506,7 +496,7 @@ Use `thiserror` for descriptive errors (supports `no_std`):
 ```rust
 use thiserror::Error;
 use num_derive::FromPrimitive;
-use pinocchio::program_error::ProgramError;
+use pinocchio::error::ProgramError;
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum VaultError {
@@ -527,12 +517,13 @@ impl From<VaultError> for ProgramError {
 
 ## Closing Accounts Securely
 
-Prevent revival attacks by marking closed accounts:
+Prevent revival attacks by marking closed accounts. `set_lamports` returns `()`, not `Result` — the caller must drain lamports first because `close()` zeroes the data-length / lamports / owner fields but does not move lamports.
 
 ```rust
-pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
-    // Add lamports
-    destination.set_lamports(destination.lamports() + account.lamports())?;
+pub fn close(account: &mut AccountView, destination: &mut AccountView) -> ProgramResult {
+    // Drain lamports
+    destination.set_lamports(destination.lamports() + account.lamports());
+    account.set_lamports(0);
 
     // Close
     account.close()
@@ -580,7 +571,7 @@ Use references instead of heap allocations:
 ```rust
 // Good: references with borrowed lifetimes
 pub struct Instruction<'a> {
-    pub accounts: &'a [AccountView],
+    pub accounts: &'a mut [AccountView],
     pub data: &'a [u8],
 }
 
@@ -596,10 +587,15 @@ If a CPI will fail on incorrect accounts anyway, skip pre-validation:
 
 ```rust
 // Instead of validating ATA derivation, compute expected address
-let expected_ata = find_program_address(
-    &[owner.address(), token_program.address(), mint.address()],
+let seeds: [&[u8]; 3] = [
+    owner.address().as_array(),
+    token_program.address().as_array(),
+    mint.address().as_array(),
+];
+let (expected_ata, _bump) = Address::derive_program_address(
+    &seeds,
     &pinocchio_associated_token_account::ID,
-).0;
+).ok_or(ProgramError::InvalidSeeds)?;
 
 if account.address() != &expected_ata {
     return Err(ProgramError::InvalidAccountData);
@@ -613,7 +609,7 @@ Process multiple operations in a single CPI (saves ~1000 CU per batched operatio
 ```rust
 const IX_HEADER_SIZE: usize = 2; // account_count + data_length
 
-pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramResult {
+pub fn process_batch(mut accounts: &mut [AccountView], mut data: &[u8]) -> ProgramResult {
     loop {
         if data.len() < IX_HEADER_SIZE {
             return Err(ProgramError::InvalidInstructionData);
@@ -627,7 +623,9 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        let (ix_accounts, ix_data) = (&accounts[..account_count], &data[IX_HEADER_SIZE..data_offset]);
+        // split_at_mut keeps mutable access to both halves
+        let (ix_accounts, rest) = accounts.split_at_mut(account_count);
+        let ix_data = &data[IX_HEADER_SIZE..data_offset];
 
         process_inner_instruction(ix_accounts, ix_data)?;
 
@@ -635,7 +633,7 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
             break;
         }
 
-        accounts = &accounts[account_count..];
+        accounts = rest;
         data = &data[data_offset..];
     }
 
@@ -669,8 +667,10 @@ pub const EVENT_IX_TAG: u64 = 0x1d9acb512ea545e4; // Anchor-compatible event tag
 pub const EVENT_IX_TAG_LE: [u8; 8] = EVENT_IX_TAG.to_le_bytes();
 
 // Event authority PDA (derived at compile time if possible)
-pub fn find_event_authority() -> (Address, u8) {
-    pinocchio_pubkey::find_program_address(&[EVENT_AUTHORITY_SEED], &crate::ID)
+pub fn find_event_authority() -> Result<(Address, u8), ProgramError> {
+    let seeds: [&[u8]; 1] = [EVENT_AUTHORITY_SEED];
+    Address::derive_program_address(&seeds, &crate::ID)
+        .ok_or(ProgramError::InvalidSeeds)
 }
 ```
 
@@ -699,6 +699,9 @@ impl EventDiscriminator for DepositEvent {
 ### Emitting an Event
 
 ```rust
+use pinocchio::cpi::invoke;
+use pinocchio::instruction::{InstructionAccount, InstructionView};
+
 pub fn emit_event<E: EventDiscriminator + EventSerialize>(
     event: &E,
     event_authority: &AccountView,
@@ -707,11 +710,15 @@ pub fn emit_event<E: EventDiscriminator + EventSerialize>(
     let mut data = E::DISCRIMINATOR.to_vec();
     data.extend(event.serialize());
 
+    let metas = [InstructionAccount::readonly_signer(event_authority.address())];
+    let ix = InstructionView {
+        program_id: &crate::ID,
+        data: &data,
+        accounts: &metas,
+    };
+
     // CPI to self with event_authority as signer
-    pinocchio::program::invoke(
-        &Instruction { program_id: &crate::ID, accounts: &[...], data: &data },
-        &[event_authority, program],
-    )
+    invoke(&ix, &[event_authority])
 }
 ```
 
@@ -778,7 +785,7 @@ cargo update blake3 --precise 1.5.5
 - [ ] Check for duplicate mutable accounts
 
 ### PDA Safety
-- [ ] Derive canonical bump with `find_program_address` at init — never trust user-supplied bumps
+- [ ] Derive canonical bump with `Address::derive_program_address` at init — never trust user-supplied bumps
 - [ ] Store canonical bump in account data and validate on every use via `PdaAccount::validate_self`
 - [ ] Only transfer the lamport deficit on init — not the full rent amount (lamport griefing)
 
@@ -790,5 +797,5 @@ cargo update blake3 --precise 1.5.5
 - [ ] Use checked math (`checked_add`, `checked_sub`, etc.)
 
 ### Account Lifecycle
-- [ ] Close accounts with `account.close()` — this transfers ownership back to the system program
+- [ ] Drain lamports first, then call `account.close()` — `close()` zeroes the data-length / lamports / owner fields but does not move lamports
 - [ ] Discriminator check on every read prevents type cosplay attacks
