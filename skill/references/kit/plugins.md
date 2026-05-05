@@ -120,17 +120,14 @@ In most apps both roles are the same keypair, so **default to the `signer*` vari
 
 ```ts
 import { createClient, lamports } from '@solana/kit';
-import {
-  rpcAirdrop,
-  solanaRpcConnection,
-  solanaRpcSubscriptionsConnection,
-} from '@solana/kit-plugin-rpc';
+import { rpcAirdrop, solanaRpcConnection } from '@solana/kit-plugin-rpc';
 import { generatedSignerWithSol } from '@solana/kit-plugin-signer';
 
-// Airdrop function must exist before generatedSignerWithSol
+// `solanaRpcConnection` installs both `rpc` and `rpcSubscriptions`; the WS URL
+// is derived from `rpcUrl` (override with `rpcSubscriptionsUrl` if needed).
+// Airdrop function must exist before generatedSignerWithSol.
 const client = await createClient()
-  .use(solanaRpcConnection('http://127.0.0.1:8899'))
-  .use(solanaRpcSubscriptionsConnection('ws://127.0.0.1:8900'))
+  .use(solanaRpcConnection({ rpcUrl: 'http://127.0.0.1:8899' }))
   .use(rpcAirdrop())
   .use(generatedSignerWithSol(lamports(10_000_000_000n)));
 ```
