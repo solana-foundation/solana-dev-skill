@@ -13,5 +13,7 @@ Thumbs.db
 *.tmp
 *.bak
 tests/node_modules
+skill/scripts/node_modules
+skill/scripts/package-lock.json
 .claude
 .agents

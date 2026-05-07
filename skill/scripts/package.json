@@ -1,0 +1,15 @@
+{
+  "name": "solana-sdk-gen-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "codama": "1.5.1",
+    "@codama/nodes-from-anchor": "1.4.0",
+    "@codama/renderers-js": "2.1.0",
+    "@codama/renderers-js-umi": "1.1.24",
+    "@codama/renderers-rust": "3.0.0",
+    "@codama/renderers-go": "2.0.0",
+    "@solana/kit": "2.1.0",
+    "pako": "2.1.0"
+  }
+}

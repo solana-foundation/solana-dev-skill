@@ -1,6 +1,6 @@
 ---
 name: solana-dev
-description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries.
+description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", "generate an SDK", "create a client for program X", "fetch IDL", "castaway", "codama generate", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Includes bundled scripts for on-chain IDL fetching and multi-language SDK generation (TypeScript, Rust, Go). Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries.
 user-invocable: true
 license: MIT
 compatibility: Requires Node.js 18+, Rust toolchain, Solana CLI, Anchor CLI
@@ -17,7 +17,8 @@ Use this Skill when the user asks for:
 - Wallet connection + signing flows
 - Transaction building / sending / confirmation UX
 - On-chain program development (Anchor or Pinocchio)
-- Client SDK generation (typed program clients)
+- Client SDK generation (typed program clients) -- see `references/idl-codegen.md` for bundled scripts
+- **Generating SDKs from program IDs or IDL files** (TypeScript, Rust, Go via Codama)
 - Local testing (LiteSVM, Mollusk, Surfpool)
 - Security hardening and audit-style reviews
 - Confidential transfers (Token-2022 ZK extension)
