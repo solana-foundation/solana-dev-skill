@@ -11,14 +11,14 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 - [Solana Cookbook](https://solanacookbook.com/)
 
 ## Core Solana Docs
-- [Solana Documentation](https://solana.com/docs) (Core, RPC, Frontend, Programs)
-- [Next.js + Solana React Hooks](https://solana.com/docs/frontend/nextjs-solana)
-- [@solana/web3-compat](https://solana.com/docs/frontend/web3-compat)
-- [RPC API Reference](https://solana.com/docs/rpc)
+- [Solana Documentation](https://solana.com/docs.md) (Core, RPC, Frontend, Programs) — append `.md` to any docs URL for the LLM-friendly markdown version
+- [Next.js + Solana React Hooks](https://solana.com/docs/frontend/nextjs-solana.md)
+- [@solana/web3-compat](https://solana.com/docs/frontend/web3-compat.md)
+- [RPC API Reference](https://solana.com/docs/rpc.md)
 
 ## Modern JS/TS SDK
 - [@solana/kit Repository](https://github.com/anza-xyz/kit)
-- [Solana Kit Docs](https://solana.com/docs/clients/kit) (installation, upgrade guide)
+- [Solana Kit Docs](https://solana.com/docs/clients/kit.md) (installation, upgrade guide)
 
 ## UI and Wallet Infrastructure
 - [framework-kit Repository](https://github.com/solana-foundation/framework-kit) (@solana/client, @solana/react-hooks)
@@ -58,7 +58,7 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 
 ## IDLs and Codegen
 - [Codama Repository](https://github.com/codama-idl/codama)
-- [Codama Generating Clients](https://solana.com/docs/programs/codama-generating-clients)
+- [Codama Generating Clients](https://solana.com/docs/programs/codama/clients.md)
 - [Shank (Metaplex)](https://github.com/metaplex-foundation/shank)
 - [Kinobi (Metaplex)](https://github.com/metaplex-foundation/kinobi)
 
@@ -74,7 +74,6 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 
 ## Security
 - [Blueshift Program Security Course](https://learn.blueshift.gg/en/courses/program-security)
-- [Solana Security Best Practices](https://solana.com/docs/programs/security)
 
 ## Performance and Optimization
 - [Solana Optimized Programs](https://github.com/Laugharne/solana_optimized_programs)

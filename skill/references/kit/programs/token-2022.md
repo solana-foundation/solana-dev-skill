@@ -11,7 +11,7 @@ Program address: `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb`
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 ```
 
-Token-2022 extends the base Token program with configurable extensions. For a full guide to available extensions and their use cases, see the [Token Extensions documentation](https://solana.com/docs/tokens/extensions).
+Token-2022 extends the base Token program with configurable extensions. For a full guide to available extensions and their use cases, see the [Token Extensions documentation](https://solana.com/docs/tokens/extensions.md).
 
 ## When to Use Token-2022 vs Token
 
@@ -74,4 +74,4 @@ const mint = await fetchMint(rpc, mintAddress);
 
 ## Extensions Reference
 
-See [Token Extensions documentation](https://solana.com/docs/tokens/extensions) for implementation details on each extension.
+See [Token Extensions documentation](https://solana.com/docs/tokens/extensions.md) for implementation details on each extension.
