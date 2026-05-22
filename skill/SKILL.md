@@ -1,12 +1,12 @@
 ---
 name: solana-dev
-description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries.
+description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). Also use for quick on-chain lookups via public RPC + curl — "what's the balance of <wallet>", "look up transaction <sig>", "token balance for <account>", "check this address on mainnet/devnet". End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, security checklists, and JSON-RPC curl lookups against public clusters. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries.
 user-invocable: true
 license: MIT
 compatibility: Requires Node.js 18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # Solana Development Skill (framework-kit-first)
@@ -94,6 +94,7 @@ When solving a Solana task:
 - Program layer (+ IDL)
 - Testing/CI layer
 - Infra (RPC/indexing/monitoring)
+- **Quick on-chain lookup** (one-shot reads: balance, tx, token account) — use public RPC + `curl`, see [rpc-quick-lookups.md](references/rpc-quick-lookups.md). Don't scaffold a project for a single read.
 
 ### 2. Pick the right building blocks
 - UI: framework-kit patterns.
@@ -151,6 +152,7 @@ Once connected, you have access to these tools:
 - **When** the user asks about Anchor macros, constraints, or version-specific behavior
 
 ## Progressive disclosure (read when needed)
+- Quick RPC lookups (curl + public endpoints): [rpc-quick-lookups.md](references/rpc-quick-lookups.md) — balance, tx, token account, account info
 - Solana Kit (@solana/kit): [kit/overview.md](references/kit/overview.md) — plugin clients, quick start, common patterns
 - Kit Plugins & Composition: [kit/plugins.md](references/kit/plugins.md) — ready-to-use clients, custom client composition, available plugins
 - Kit Advanced: [kit/advanced.md](references/kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
