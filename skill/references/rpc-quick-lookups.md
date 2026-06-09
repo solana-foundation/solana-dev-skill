@@ -2,7 +2,7 @@
 
 Use this when the user asks a one-shot read-only question about on-chain state and you just need an answer — wallet balance, a specific transaction, a token account balance, account info. No SDK install, no project setup, just `curl`.
 
-For anything beyond a quick lookup (building/sending transactions, indexing, repeated reads, app code) drop back to `@solana/kit` — see `references/kit/overview.md`.
+For anything beyond a quick lookup (building/sending transactions, indexing, repeated reads, app code) drop back to `@solana/kit` — see `kit/overview.md`.
 
 ## Public RPC endpoints
 
@@ -112,4 +112,4 @@ curl -s https://api.devnet.solana.com -X POST \
 
 ## When to escalate to kit
 
-Switch to `@solana/kit` once the task involves: sending a transaction, signing, repeated/paginated reads, decoding non-parsed account data, websocket subscriptions, or anything the user will run more than once. See `references/kit/overview.md`.
+Switch to `@solana/kit` once the task involves: sending a transaction, signing, repeated/paginated reads, decoding non-parsed account data, websocket subscriptions, or anything the user will run more than once. See `kit/overview.md`.
