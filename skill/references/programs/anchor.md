@@ -94,7 +94,9 @@ pub account: Account<'info, CustomAccount>,
 pub account: Account<'info, CustomAccount>,
 ```
 
-## Account Discriminators
+## PDA Management
+
+### Account Discriminators
 
 Default discriminators use `sha256("account:<StructName>")[0..8]`. Custom discriminators (Anchor 0.31+):
 
@@ -107,6 +109,35 @@ pub struct Escrow { ... }
 - Discriminators must be unique across your program
 - Using `[1]` prevents using `[1, 2, ...]` which also start with `1`
 - `[0]` conflicts with uninitialized accounts
+
+### Account Size
+
+Should use `#[derive(InitSpace)]` to derive PDA data size instead of calculating it manually. 
+It usually is combined with the macro `#[max_len(...)]` if you want to use variable-length data types 
+(e.g. Vec, HashMap, String, etc.) in the PDA struct. 
+It will generate a const member `INIT_SPACE` for the PDA struct. 
+The total space required for the account will be `INIT_SPACE` plus the account discriminator size, which is 8 bytes. 
+
+```rust
+#[account]
+#[derive(InitSpace)]
+pub struct AgreementState {
+    pub authority: Pubkey,
+    #[max_len(MAX_TITLE_LEN)]
+    pub title: String,
+    #[max_len(MAX_PARTIES)]
+    pub parties: Vec<Pubkey>,
+    pub bump: u8,
+}
+
+// must add the discriminator size to the account space
+#[account(
+    init,
+    payer = payer,
+    space = 8 + AgreementState::INIT_SPACE
+)]
+pub account: Account<'info, AgreementState>,
+```
 
 ## Instruction Patterns
 
