@@ -639,7 +639,7 @@ Process multiple operations in a single CPI (saves ~1000 CU per batched operatio
 ```rust
 const IX_HEADER_SIZE: usize = 2; // account_count + data_length
 
-pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramResult {
+pub fn process_batch(mut accounts: &mut [AccountView], mut data: &[u8]) -> ProgramResult {
     loop {
         if data.len() < IX_HEADER_SIZE {
             return Err(ProgramError::InvalidInstructionData);
@@ -653,7 +653,11 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        let (ix_accounts, ix_data) = (&accounts[..account_count], &data[IX_HEADER_SIZE..data_offset]);
+        // Split mutably (0.11+): inner instructions receive &mut [AccountView]
+        // so they can mutate their accounts. mem::take avoids reborrow issues
+        // when advancing the slice across loop iterations.
+        let (ix_accounts, rest) = core::mem::take(&mut accounts).split_at_mut(account_count);
+        let ix_data = &data[IX_HEADER_SIZE..data_offset];
 
         process_inner_instruction(ix_accounts, ix_data)?;
 
@@ -661,7 +665,7 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
             break;
         }
 
-        accounts = &accounts[account_count..];
+        accounts = rest;
         data = &data[data_offset..];
     }
 
