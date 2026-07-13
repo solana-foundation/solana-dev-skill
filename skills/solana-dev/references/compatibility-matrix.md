@@ -258,14 +258,15 @@ Use the row that matches your workspace's resolved `solana-*` granular crate ver
 
 | Tool | npm Package | GLIBC Req | Node.js | Notes |
 |---|---|---|---|---|
-| **LiteSVM 0.5.0** | `litesvm` | ≥2.38 ⚠️ | ≥18 | **Tested: native binary (`litesvm.linux-x64-gnu.node`) fails on Debian 12 (GLIBC 2.36) with `undefined symbol: __isoc23_strtol`**. Works on Ubuntu 24.04+, macOS. |
+| **LiteSVM 1.3.0** (current, Jul 2026) | `litesvm` | ≥2.38 | ≥18 | Agave 4.1-based; pairs with `@solana/kit-plugin-litesvm` 0.13 |
+| **LiteSVM 0.5.0** | `litesvm` | ≥2.38 ⚠️ | ≥18 | **Tested: native binary (`litesvm.linux-x64-gnu.node`) fails on Debian 12 (GLIBC 2.36) with `undefined symbol: __isoc23_strtol`**. Works on Ubuntu 24.04+, macOS. Same GLIBC floor expected for 1.x binaries. |
 | **LiteSVM 0.3.x** | `litesvm` | ≥2.31 | ≥16 | Older API, may work on older systems |
 | **solana-bankrun** | `solana-bankrun` | ≥2.28 | ≥16 | Legacy — being replaced by LiteSVM |
 | **anchor-bankrun** | `anchor-bankrun` | ≥2.28 | ≥16 | Legacy Anchor wrapper for bankrun |
 | **anchor-litesvm** | `anchor-litesvm` | Same as litesvm | ≥18 | Anchor wrapper for LiteSVM |
 
 ### LiteSVM on Older Systems
-If `litesvm` 0.5.0 fails with GLIBC errors:
+If the `litesvm` npm native binary fails with GLIBC errors (verified on 0.5.0):
 1. **Upgrade OS** to Ubuntu 24.04+ (recommended)
 2. **Use Docker**: `FROM ubuntu:24.04` base image
 3. **Fall back to `solana-bankrun`** temporarily

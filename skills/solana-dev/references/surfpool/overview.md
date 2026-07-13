@@ -123,7 +123,7 @@ surfpool start --ci --daemon
 
 Since v1.2.0, a full surfnet can be embedded in-process — no shelling out, no fixed ports. Ideal for integration test suites.
 
-- **TypeScript**: npm package `@solana/surfpool` (1.4.0, napi-rs native bindings; macOS x64/arm64, Linux x64 GNU)
+- **TypeScript**: npm package `@solana/surfpool` (latest npm release 1.4.0 as of Jul 2026 — npm may lag the CLI version; napi-rs native bindings for macOS x64/arm64, Linux x64 GNU)
 - **Rust**: crate `surfpool-sdk = "1.5.0"` — `Surfnet::builder()` with options such as `BlockProductionMode`
 
 ```typescript
