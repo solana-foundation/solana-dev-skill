@@ -1,15 +1,14 @@
 ---
 name: solana-dev
-description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). Also use for quick on-chain lookups via public RPC + curl — "what's the balance of <wallet>", "look up transaction <sig>", "token balance for <account>", "check this address on mainnet/devnet". End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, security checklists, and JSON-RPC curl lookups against public clusters. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries.
-user-invocable: true
+description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). Also use for quick on-chain lookups via public RPC + curl — "what's the balance of <wallet>", "look up transaction <sig>", "token balance for <account>", "check this address on mainnet/devnet". End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, Surfpool/LiteSVM/Mollusk testing, security checklists, and JSON-RPC curl lookups against public clusters. Prefers @solana/kit v7 plugin clients (createClient + .use()), wallet connection via @solana/kit-plugin-wallet + @solana/react, web3.js v3 (Kit internals) for legacy codebases, and Surfpool for local networks and integration testing.
 license: MIT
-compatibility: Requires Node.js 18+, Rust toolchain, Solana CLI, Anchor CLI
+compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: 1.2.0
+  version: "2.0.0"
 ---
 
-# Solana Development Skill (framework-kit-first)
+# Solana Development Skill (Kit-first)
 
 ## What this Skill is for
 Use this Skill when the user asks for:
@@ -18,18 +17,16 @@ Use this Skill when the user asks for:
 - Transaction building / sending / confirmation UX
 - On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
-- Local testing (LiteSVM, Mollusk, Surfpool)
+- Local testing (Surfpool, LiteSVM, Mollusk)
 - Security hardening and audit-style reviews
 - Confidential transfers (Token-2022 ZK extension)
 - **Toolchain setup, version mismatches, GLIBC errors, dependency conflicts**
 - **Upgrading Anchor/Solana CLI versions, migration between versions**
+- **Migrating web3.js v1 code to web3.js v3 or Kit**
 
 ## Default stack decisions (opinionated)
-1) **UI: framework-kit first**
-- Use `@solana/client` + `@solana/react-hooks`.
-- Prefer Wallet Standard discovery/connect via the framework-kit client.
 
-2) **SDK: @solana/kit first**
+1) **SDK: @solana/kit (v7+) first**
 - Build clients with `createClient()` from `@solana/kit`, then `.use(...)` plugins:
   ```ts
   createClient()
@@ -45,20 +42,25 @@ Use this Skill when the user asks for:
 - Use `@solana-program/*` program plugins (e.g., `tokenProgram()`) for fluent instruction APIs.
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
 
-3) **Legacy compatibility: web3.js only at boundaries**
-- If you must integrate a library that expects web3.js objects (`PublicKey`, `Transaction`, `Connection`),
-  use `@solana/web3-compat` as the boundary adapter.
-- Do not let web3.js types leak across the entire app; contain them to adapter modules.
+2) **UI: Kit plugin client + @solana/react**
+- Wallet connection via `walletSigner()` from `@solana/kit-plugin-wallet` (Wallet Standard discovery; the connected wallet fills the payer/identity roles).
+- React bindings via `@solana/react` v7 (`ClientProvider`, `useClient`, data hooks, SWR/TanStack adapters, Wallet Standard signing hooks).
+- Do **not** use `@solana/client` / `@solana/react-hooks` (framework-kit) or `@solana/wallet-adapter-*` for new work.
+
+3) **Legacy compatibility: web3.js v3**
+- web3.js v3 (`npm install @solana/web3.js@rc`) is the classic class-based API rebuilt on Kit internals — `PublicKey` is an alias of `Address`, `Keypair` satisfies Kit's `KeyPairSigner`, signing is async.
+- Migrating a v1 codebase: move to v3 (mechanical changes), then adopt Kit incrementally. Do not introduce `@solana/web3-compat` — it is superseded; replace it with v3 where found.
+- Do not let legacy class types leak across the entire app; contain them to adapter modules.
 
 4) **Programs**
-- Default: Anchor (fast iteration, IDL generation, mature tooling).
-- Performance/footprint: Pinocchio when you need CU optimization, minimal binary size,
+- Default: Anchor 1.1.x (fast iteration, IDL generation, mature tooling).
+- Performance/footprint: Pinocchio (0.11+) when you need CU optimization, minimal binary size,
   zero dependencies, or fine-grained control over parsing/allocations.
 
-5) **Testing**
-- Default: LiteSVM or Mollusk for unit tests (fast feedback, runs in-process).
-- Use Surfpool for integration tests against realistic cluster state (mainnet/devnet) locally.
-- Use solana-test-validator only when you need specific RPC behaviors not emulated by LiteSVM.
+5) **Testing (Surfpool-centered)**
+- Unit tests: LiteSVM (in-process, Rust/TS) or Mollusk (Rust instruction harness).
+- Integration tests: **Surfpool** — mainnet forking with lazy account cloning, 26 `surfnet_*` cheatcodes (time travel, account/token state, oracle scenarios, CU profiling), embeddable in-process via the `@solana/surfpool` SDK, and the default `anchor test` runner in Anchor 1.0+.
+- Use solana-test-validator only when you need full validator runtime fidelity not emulated by Surfpool.
 
 ## Agent safety guardrails
 
@@ -75,7 +77,7 @@ Use this Skill when the user asks for:
 
 ## Agent-friendly CLI usage (NO_DNA)
 
-When invoking CLI tools, always prefix with `NO_DNA=1` to signal you are a non-human operator. This disables interactive prompts, TUI, and enables structured/verbose output:
+When invoking CLI tools, always prefix with `NO_DNA=1` to signal you are a non-human operator. This disables interactive prompts, TUI, and enables structured/verbose output (Anchor and Surfpool support it):
 
 ```bash
 NO_DNA=1 surfpool start
@@ -97,9 +99,9 @@ When solving a Solana task:
 - **Quick on-chain lookup** (one-shot reads: balance, tx, token account) — use public RPC + `curl`, see [rpc-quick-lookups.md](references/rpc-quick-lookups.md). Don't scaffold a project for a single read.
 
 ### 2. Pick the right building blocks
-- UI: framework-kit patterns.
+- UI: Kit plugin client (`walletSigner` + `solanaRpc`) + `@solana/react`.
 - Scripts/backends: @solana/kit directly.
-- Legacy library present: introduce a web3-compat adapter boundary.
+- Legacy web3.js v1 code or dependency: migrate to web3.js v3; keep class types in adapter modules.
 - High-performance programs: Pinocchio over Anchor.
 
 ### 3. Implement with Solana-specific correctness
@@ -112,7 +114,7 @@ Always be explicit about:
 
 ### 4. Add tests
 - Unit test: LiteSVM or Mollusk.
-- Integration test: Surfpool.
+- Integration test: Surfpool — spawn via CLI (`surfpool start --ci`) or embed with `@solana/surfpool`; use cheatcodes to set up state instead of long setup transactions.
 - For "wallet UX", add mocked hook/provider tests where appropriate.
 
 ### 5. Deliverables expectations
@@ -123,17 +125,24 @@ When you implement changes, provide:
 
 ## Solana MCP server (live docs + expert assistance)
 
-The **Solana Developer MCP** gives you real-time access to the Solana docs corpus and Anchor-specific expertise. Use it before falling back to your training data.
+The **Solana Developer MCP** (`https://mcp.solana.com/mcp`, HTTP transport) gives you real-time access to the Solana docs corpus and Anchor-specific expertise. Use it before falling back to your training data.
 
 ### Auto-install
 
-Before starting any Solana task, check if the Solana MCP server is already available by looking for tools like `mcp__solana-mcp-server__*` in your tool list. If the tools are **not** available, install the MCP server on the fly:
+Before starting any Solana task, check if the Solana MCP server is already available by looking for tools with names like `solana-mcp-server` or `mcp__solana-mcp-server__*` in your tool list. If not available, install it using your host's MCP mechanism:
 
 ```bash
+# Claude Code
 claude mcp add --transport http solana-mcp-server https://mcp.solana.com/mcp
+
+# Gemini CLI
+gemini mcp add --transport http solana-mcp-server https://mcp.solana.com/mcp
+
+# Codex CLI
+codex mcp add solana-mcp-server -- npx -y mcp-remote https://mcp.solana.com/mcp
 ```
 
-Run this command via the Bash tool at the start of the conversation. The MCP server becomes available immediately after adding it.
+For other hosts (Cursor, Windsurf, Cline, OpenCode, Copilot), add an entry to the host's MCP config file with URL `https://mcp.solana.com/mcp` (HTTP/remote transport). If you cannot modify config, ask the user to add it.
 
 ### Available MCP tools
 
@@ -151,16 +160,18 @@ Once connected, you have access to these tools:
 - **Before** recommending API patterns — confirm they match the latest docs
 - **When** the user asks about Anchor macros, constraints, or version-specific behavior
 
+Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local networks — see [surfpool/overview.md](references/surfpool/overview.md).
+
 ## Progressive disclosure (read when needed)
 - Quick RPC lookups (curl + public endpoints): [rpc-quick-lookups.md](references/rpc-quick-lookups.md) — balance, tx, token account, account info
 - Solana Kit (@solana/kit): [kit/overview.md](references/kit/overview.md) — plugin clients, quick start, common patterns
-- Kit Plugins & Composition: [kit/plugins.md](references/kit/plugins.md) — ready-to-use clients, custom client composition, available plugins
+- Kit Plugins & Composition: [kit/plugins.md](references/kit/plugins.md) — ready-to-use clients, wallet plugin, custom composition, available plugins
 - Kit Advanced: [kit/advanced.md](references/kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
-- UI + wallet + hooks: [frontend-framework-kit.md](references/frontend-framework-kit.md)
-- Kit ↔ web3.js boundary: [kit-web3-interop.md](references/kit-web3-interop.md)
+- UI + wallet + hooks: [frontend.md](references/frontend.md)
+- Kit ↔ web3.js v3 boundary + v1 migration: [kit-web3-interop.md](references/kit-web3-interop.md)
 - Anchor programs: [programs/anchor.md](references/programs/anchor.md)
 - Pinocchio programs: [programs/pinocchio.md](references/programs/pinocchio.md)
-- Testing strategy: [testing.md](references/testing.md)
+- Testing strategy (Surfpool/LiteSVM/Mollusk): [testing.md](references/testing.md)
 - IDLs + codegen: [idl-codegen.md](references/idl-codegen.md)
 - Payments: [payments.md](references/payments.md)
 - Confidential transfers: [confidential-transfers.md](references/confidential-transfers.md)

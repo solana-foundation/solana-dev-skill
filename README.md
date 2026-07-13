@@ -1,74 +1,99 @@
-# Solana Development Skill for Claude Code
+# Solana Development Skill
 
-A comprehensive Claude Code skill for modern Solana development (January 2026 best practices).
+A comprehensive [Agent Skill](https://agentskills.io/) for modern Solana development (July 2026 best practices). Works with every coding agent that has direct Agent Skills support: **Claude Code, OpenAI Codex / ChatGPT desktop, GitHub Copilot (CLI + coding agent), Gemini CLI, Cursor, Windsurf, Cline, OpenCode**, and anything else that reads `SKILL.md`.
 
 ## Overview
 
-This skill provides Claude Code with deep knowledge of the current Solana development ecosystem:
+This skill gives your coding agent deep knowledge of the current Solana development ecosystem:
 
-- **UI**: Solana Foundation framework-kit (`@solana/client` + `@solana/react-hooks`)
-- **SDK**: `@solana/kit` (v5.x) for new client work
-- **Legacy Interop**: `@solana/web3-compat` for bridging to web3.js dependencies
-- **Programs**: Anchor (default), Pinocchio for high-performance needs
-- **Testing**: LiteSVM/Mollusk for unit tests, Surfpool for integration
+- **SDK**: `@solana/kit` v7 plugin clients (`createClient()` + `.use()`)
+- **UI**: Wallet Standard connection via `@solana/kit-plugin-wallet` + `@solana/react`
+- **Legacy Interop**: web3.js v3 — the classic API rebuilt on Kit internals
+- **Programs**: Anchor 1.1.x (default), Pinocchio 0.11+ for high-performance needs
+- **Testing**: Surfpool for integration tests (mainnet forking, cheatcodes, embedded SDK), LiteSVM/Mollusk for unit tests
 - **Codegen**: Codama-first IDL and client generation
 - **Security**: Comprehensive vulnerability patterns and prevention
 - **Toolchain**: Version compatibility, common errors, and troubleshooting guides
 
 ## Installation
 
-### Quick Install
+### Quick install (any agent, via skills.sh)
 
 ```bash
-npx skills add https://github.com/solana-foundation/solana-dev-skill
+npx skills add solana-foundation/solana-dev-skill
 ```
 
-### Manual Install
+The [skills CLI](https://www.skills.sh/) detects your installed agents and installs (or symlinks) the skill for each of them.
+
+### Install script
 
 ```bash
 git clone https://github.com/solana-foundation/solana-dev-skill
 cd solana-dev-skill
-./install.sh
+./install.sh            # user-level: ~/.agents/skills + ~/.claude/skills
+./install.sh --project  # project-level: .agents/skills + .claude/skills
+./install.sh --link     # symlink instead of copy (auto-updates with git pull)
 ```
+
+### Manual install
+
+Copy (or symlink) `skills/solana-dev/` into your agent's skills directory:
+
+| Agent | Project directory | Personal directory |
+|---|---|---|
+| Claude Code | `.claude/skills/` | `~/.claude/skills/` |
+| OpenAI Codex / ChatGPT desktop | `.agents/skills/` | `~/.agents/skills/` |
+| GitHub Copilot (CLI, coding agent, VS Code) | `.github/skills/` or `.agents/skills/` | `~/.copilot/skills/` or `~/.agents/skills/` |
+| Gemini CLI | `.gemini/skills/` or `.agents/skills/` | `~/.gemini/skills/` or `~/.agents/skills/` |
+| Cursor | `.cursor/skills/` or `.agents/skills/` | `~/.cursor/skills/` or `~/.agents/skills/` |
+| Windsurf | `.windsurf/skills/` or `.agents/skills/` | `~/.codeium/windsurf/skills/` |
+| Cline | `.cline/skills/` or `.claude/skills/` | `~/.cline/skills/` |
+| OpenCode | `.opencode/skills/` or `.agents/skills/` | `~/.config/opencode/skills/` |
+
+`.agents/skills/` (cross-agent convention) plus `.claude/skills/` together cover all of the above.
 
 ## Skill Structure
 
 ```
-skill/
+skills/solana-dev/
 ├── SKILL.md                         # Main skill definition (required)
 └── references/
-    ├── frontend-framework-kit.md    # UI patterns with framework-kit
-    ├── kit-web3-interop.md          # Kit ↔ web3.js boundary patterns
-    ├── testing.md                   # Testing (LiteSVM/Mollusk/Surfpool)
+    ├── kit/                         # @solana/kit: overview, plugins, react, codecs, accounts, codama, gotchas, advanced, programs/
+    ├── frontend.md                  # UI patterns (Kit wallet plugin + @solana/react)
+    ├── kit-web3-interop.md          # web3.js v3 boundary + v1 migration
+    ├── testing.md                   # Testing (Surfpool/LiteSVM/Mollusk)
     ├── idl-codegen.md               # IDL and client generation
-    ├── payments.md                  # Payments with Commerce Kit
+    ├── payments.md                  # Payments (Kit, Solana Pay, Kora)
     ├── security.md                  # Security vulnerabilities & prevention
     ├── resources.md                 # Curated reference links
     ├── compatibility-matrix.md      # Version compatibility tables (Anchor/Solana/Rust/GLIBC)
     ├── common-errors.md             # Error message → solution mappings
     ├── confidential-transfers.md    # Confidential transfers (Token-2022 ZK)
+    ├── rpc-quick-lookups.md         # One-shot RPC reads via curl
     ├── programs/
     │   ├── anchor.md                # Anchor program development
     │   └── pinocchio.md             # Pinocchio (high-performance native)
+    ├── anchor/
+    │   └── migrating-v0.32-to-v1.md # Anchor v1 migration
     └── surfpool/
         ├── overview.md              # Surfpool local network guide
-        └── cheatcodes.md            # Surfpool cheatcodes reference
+        └── cheatcodes.md            # Surfpool cheatcodes reference (26 surfnet_* methods)
 ```
 
 ## Usage
 
-Once installed, Claude Code will automatically use this skill when you ask about:
+Once installed, your agent will automatically use this skill when you ask about:
 
 - Solana dApp UI work (React / Next.js)
 - Wallet connection and signing flows
 - Transaction building, sending, and confirmation UX
 - On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
-- Local testing (LiteSVM, Mollusk, Surfpool)
+- Local testing (Surfpool, LiteSVM, Mollusk)
 - Security hardening and audit-style reviews
 - Surfpool local network setup and cheatcodes
 - **Toolchain issues** (version mismatches, GLIBC errors, dependency conflicts)
-- **Migration** between Anchor/Solana CLI versions
+- **Migration** between Anchor/Solana CLI versions, and web3.js v1 → v3
 
 ### Example Prompts
 
@@ -76,12 +101,12 @@ Once installed, Claude Code will automatically use this skill when you ask about
 "Help me set up a Next.js app with Solana wallet connection"
 "Create an Anchor program for a simple escrow"
 "Convert this Anchor program to Pinocchio for better CU efficiency"
-"How do I integrate a legacy web3.js library with my Kit-based app?"
-"Write LiteSVM tests for my token transfer instruction"
+"Migrate this web3.js v1 script to web3.js v3"
+"Write Surfpool integration tests for my token transfer flow"
 "Review this program for security issues"
 "I'm getting GLIBC_2.39 not found when running anchor"
-"Help me upgrade from Anchor 0.30 to 0.31"
-"What versions of Solana CLI work with Anchor 0.31?"
+"Help me upgrade from Anchor 0.32 to 1.1"
+"What versions of Solana CLI work with Anchor 1.1?"
 "Run Surfpool and create an account with 100 SOL and USDC"
 ```
 
@@ -91,12 +116,12 @@ This skill encodes opinionated best practices:
 
 | Layer | Default Choice | Alternative |
 |-------|---------------|-------------|
-| UI Framework | framework-kit | ConnectorKit (headless) |
-| Client SDK | @solana/kit | @solana/web3-compat (boundary) |
-| Program Framework | Anchor | Pinocchio (performance) |
-| Unit Testing | LiteSVM / Mollusk | - |
-| Integration Testing | Surfpool | solana-test-validator |
-| Client Generation | Codama | Kinobi (Umi) |
+| Client SDK | @solana/kit v7 (plugin clients) | web3.js v3 (legacy codebases) |
+| Wallet / UI | @solana/kit-plugin-wallet + @solana/react | Wallet Standard hooks directly |
+| Program Framework | Anchor 1.1.x | Pinocchio 0.11+ (performance) |
+| Unit Testing | LiteSVM / Mollusk | — |
+| Integration Testing | Surfpool (CLI or embedded @solana/surfpool) | solana-test-validator |
+| Client Generation | Codama | — |
 
 ## Content Sources
 
@@ -104,13 +129,23 @@ This skill incorporates best practices from:
 
 - [Blueshift Learning Platform](https://learn.blueshift.gg/) - Comprehensive Solana courses
 - [Solana Official Documentation](https://solana.com/docs)
+- [Solana Kit](https://www.solanakit.com/) - Kit docs and plugin ecosystem
+- [solana-web3.js v3](https://github.com/solana-foundation/solana-web3.js/tree/v3.x) - Classic API on Kit internals
 - [Anza/Pinocchio](https://github.com/anza-xyz/pinocchio) - Zero-dependency program development
 - [LiteSVM](https://github.com/LiteSVM/litesvm) - Lightweight testing
 - [Surfpool](https://docs.surfpool.run/) - Integration testing with mainnet state
 
 ## Progressive Disclosure
 
-The skill uses Claude Code's progressive disclosure pattern. The main `SKILL.md` provides core guidance, and Claude reads the specialized markdown files only when needed for specific tasks.
+The skill follows the [Agent Skills](https://agentskills.io/specification) progressive disclosure pattern: the main `SKILL.md` provides core guidance, and agents read the specialized markdown files under `references/` only when needed for specific tasks.
+
+## Benchmarks
+
+`tests/run.ts` contains a small benchmark suite that checks skill trigger matching and MCP auto-install behavior:
+
+```bash
+cd tests && npm install && npx tsx run.ts
+```
 
 ## Contributing
 

@@ -14,9 +14,9 @@ npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
 # or: pnpm add @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
 ```
 
-For LiteSVM testing add `@solana/kit-plugin-litesvm`. For Codama-generated program clients add the relevant `@solana-program/*` package(s).
+For LiteSVM testing add `@solana/kit-plugin-litesvm`. For browser wallet connection add `@solana/kit-plugin-wallet`. For Codama-generated program clients add the relevant `@solana-program/*` package(s).
 
-Minimum version: Solana Kit v6.8.0.
+Minimum version: Solana Kit v7 (plugin packages 0.13+). Note: some `@solana-program/*` packages still declare `@solana/kit ^6.x` peer ranges — install with your package manager's peer-dep override if needed until they republish against Kit 7.
 
 ## Quick Start
 
@@ -267,8 +267,8 @@ See [codama.md](codama.md) for naming conventions and patterns.
 | `@solana/kit` | Main SDK, re-exports all sub-packages, exports `createClient` |
 | `@solana/kit-plugin-rpc` | All-in-one RPC plugins: `solanaRpc`, `solanaMainnetRpc`, `solanaDevnetRpc`, `solanaLocalRpc` (plus low-level `rpc`, `rpcAirdrop`, `rpcTransactionPlanner`, `rpcTransactionPlanExecutor`) |
 | `@solana/kit-plugin-signer` | Signer plugins. Default `signer*` variants set both `payer` and `identity` (`signer`, `generatedSigner`, `signerFromFile`). Use `airdropSigner` to fund an already-installed signer; use `generatedSignerWithSol` only when an airdrop function is already installed. Role-specific `payer*` and `identity*` variants for when the two roles differ. |
+| `@solana/kit-plugin-wallet` | Browser wallet connection (Wallet Standard): `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner`; adds `client.wallet` (`getState()`, `connect()`) |
 | `@solana/kit-plugin-litesvm` | All-in-one `litesvm` plugin (Node.js only) for in-memory testing |
-| `@solana/kit-plugin-airdrop` | Standalone airdrop plugin (most users get this via `solanaDevnetRpc`/`solanaLocalRpc`) |
 | `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions` and instruction batching primitives |
 | `@solana/addresses` | Address validation |
 | `@solana/accounts` | Account fetching/decoding |
@@ -282,7 +282,10 @@ See [codama.md](codama.md) for naming conventions and patterns.
 | `@solana/instruction-plans` | Multi-instruction batching |
 | `@solana/errors` | Error identification/decoding |
 | `@solana/functional` | Pipe and compose utilities |
-| `@solana/react` | React wallet hooks |
+| `@solana/react` | Kit-native React bindings (`ClientProvider`, `useClient`, data/subscription hooks, SWR & TanStack Query adapters) + Wallet Standard hooks |
+| `@solana/compat` | Type conversions between Kit and legacy web3.js v1 values |
+
+**Deprecated packages — do not install:** `@solana/kit-plugins` (umbrella), `@solana/kit-plugin-airdrop` (use `rpcAirdrop`/`litesvmAirdrop`), `@solana/kit-plugin-payer` (use `@solana/kit-plugin-signer`), `@solana/kit-client-rpc` / `@solana/kit-client-litesvm` (use the `solanaRpc` / `litesvm` all-in-one plugins).
 
 ## Best Practices
 

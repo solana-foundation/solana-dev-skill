@@ -5,7 +5,7 @@ description: Full reference for all surfnet_* RPC methods to manipulate time, ac
 
 # Surfpool Cheatcodes Reference
 
-All `surfnet_*` JSON-RPC methods available on the surfnet RPC endpoint (default `http://127.0.0.1:8899`).
+All 26 `surfnet_*` JSON-RPC methods available on the surfnet RPC endpoint (default `http://127.0.0.1:8899`), as of Surfpool v1.5.0.
 
 ## Account Manipulation
 
@@ -15,7 +15,9 @@ All `surfnet_*` JSON-RPC methods available on the surfnet RPC endpoint (default 
 | `surfnet_setTokenAccount` | Set or update an SPL token account's balance, delegate, state, and close authority for any mint. |
 | `surfnet_resetAccount` | Reset an account to its original state from the remote datasource. Optionally cascades to owned accounts. |
 | `surfnet_streamAccount` | Register an account for live streaming — re-fetches from remote datasource on every access instead of caching. |
+| `surfnet_streamAccounts` | Register multiple accounts for live streaming in a single call. |
 | `surfnet_getStreamedAccounts` | List all accounts currently registered for streaming. |
+| `surfnet_offlineAccount` | Pin an account as local-only — it is never re-fetched from the remote datasource. |
 
 ## Program Management
 
@@ -58,6 +60,64 @@ All `surfnet_*` JSON-RPC methods available on the surfnet RPC endpoint (default 
 | Method | Description |
 |---|---|
 | `surfnet_registerScenario` | Register a scenario with timed account overrides using templates (e.g. Pyth price feeds, Raydium pools). |
+
+## Meta / Control
+
+| Method | Description |
+|---|---|
+| `surfnet_enableCheatcode` | Re-enable previously disabled cheatcodes. Takes a list of method entries, e.g. `[["surfnet_setAccount", ...]]`. |
+| `surfnet_disableCheatcode` | Disable specific cheatcodes at runtime. Same parameter shape. A lockout mechanism prevents re-enabling once locked. |
+
+---
+
+## Parameter Examples
+
+Verified JSON-RPC shapes for the most common cheatcodes.
+
+### surfnet_setAccount
+
+`["<pubkey>", {"lamports"?, "data"? (base58 string or byte array), "owner"?, "executable"?, "rent_epoch"?}]`
+
+```bash
+curl -X POST http://127.0.0.1:8899 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"surfnet_setAccount","params":["<PUBKEY>",{"lamports":10000000000,"owner":"11111111111111111111111111111111"}]}'
+```
+
+### surfnet_setTokenAccount
+
+`["<owner>", "<mint>", {"amount"?, "delegate"?, "state"?, "delegated_amount"?, "close_authority"?}, token_program?]`
+
+```bash
+curl -X POST http://127.0.0.1:8899 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"surfnet_setTokenAccount","params":["<OWNER>","<MINT>",{"amount":1000000000,"state":"initialized"}]}'
+```
+
+### surfnet_timeTravel
+
+`[{"absoluteTimestamp": u64} | {"absoluteSlot": u64} | {"absoluteEpoch": u64}]` — returns the resulting `EpochInfo`.
+
+```bash
+curl -X POST http://127.0.0.1:8899 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"surfnet_timeTravel","params":[{"absoluteSlot":250000000}]}'
+```
+
+### surfnet_profileTransaction
+
+`[base64 VersionedTransaction, tag?, config?]` — simulates without committing; returns CU consumption plus pre/post account snapshots.
+
+```bash
+curl -X POST http://127.0.0.1:8899 -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"surfnet_profileTransaction","params":["<BASE64_TX>","my-benchmark-tag"]}'
+```
+
+Other shapes at a glance:
+
+- `surfnet_cloneProgramAccount`: `[source_program_id, destination_program_id]`
+- `surfnet_writeProgram`: `[program_id, data_chunk, offset, authority?]`
+- `surfnet_streamAccount`: `["<pubkey>", {"includeOwnedAccounts": true}?]`
+- `surfnet_pauseClock` / `surfnet_resumeClock`: `[]`
+- `surfnet_exportSnapshot`: `[config?]` — v1.4.0 added sysvar and feature-gate filters; output feeds `surfpool start --snapshot`
+- `surfnet_registerScenario`: `[Scenario{id, name, description, overrides: [{id, templateId, values, scenarioRelativeSlot, label, enabled, fetchBeforeUse, account: {pubkey|pda}}], tags}, baseSlot?]` — e.g. `templateId: "pyth_btcusd"`, `values: {"price_message.price_value": 67500}`; use `scenarioRelativeSlot` to schedule oracle overrides on a slot timeline and `fetchBeforeUse` to refresh live oracle data before applying overrides
 
 ---
 

@@ -1,27 +1,40 @@
 #!/bin/bash
 
-# Solana Dev Skill Installer for Claude Code
-# Usage: ./install.sh [--project | --path <path>]
+# Solana Dev Skill Installer
+# Installs the skill for any agent with native Agent Skills (SKILL.md) support:
+# Claude Code, OpenAI Codex, GitHub Copilot, Gemini CLI, Cursor, Windsurf,
+# Cline, OpenCode, and anything else that reads .agents/skills or .claude/skills.
+#
+# Usage: ./install.sh [--project | --path <path>] [--link]
+#
+# Tip: you can also install with the skills.sh CLI instead:
+#   npx skills add solana-foundation/solana-dev-skill
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_NAME="solana-dev"
-SOURCE_DIR="$SCRIPT_DIR/skill"
+SOURCE_DIR="$SCRIPT_DIR/skills/$SKILL_NAME"
 
-# Default to personal installation
-INSTALL_PATH="$HOME/.claude/skills/$SKILL_NAME"
+SCOPE="user"
+CUSTOM_PATH=""
+LINK=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --project)
-            INSTALL_PATH=".claude/skills/$SKILL_NAME"
+            SCOPE="project"
             shift
             ;;
         --path)
-            INSTALL_PATH="$2"
+            SCOPE="custom"
+            CUSTOM_PATH="$2"
             shift 2
+            ;;
+        --link)
+            LINK=true
+            shift
             ;;
         -h|--help)
             echo "Solana Dev Skill Installer"
@@ -29,11 +42,14 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./install.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --project     Install to current project (.claude/skills/$SKILL_NAME)"
-            echo "  --path PATH   Install to custom path"
+            echo "  --project     Install into the current project (.agents/skills + .claude/skills)"
+            echo "  --path PATH   Install to a single custom path"
+            echo "  --link        Symlink instead of copying (one canonical copy, auto-updates with git pull)"
             echo "  -h, --help    Show this help message"
             echo ""
-            echo "Default: Install to ~/.claude/skills/$SKILL_NAME"
+            echo "Default: install for the current user:"
+            echo "  ~/.agents/skills/$SKILL_NAME   (Codex, Copilot, Gemini CLI, Cursor, Windsurf, OpenCode, ...)"
+            echo "  ~/.claude/skills/$SKILL_NAME   (Claude Code, Cline, and compat readers)"
             exit 0
             ;;
         *)
@@ -44,44 +60,58 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if source directory exists
-if [ ! -d "$SOURCE_DIR" ]; then
-    echo "Error: Source directory '$SOURCE_DIR' not found"
-    exit 1
-fi
-
-# Check if SKILL.md exists
+# Check source
 if [ ! -f "$SOURCE_DIR/SKILL.md" ]; then
     echo "Error: SKILL.md not found in '$SOURCE_DIR'"
     exit 1
 fi
 
-# Create parent directory if needed
-mkdir -p "$(dirname "$INSTALL_PATH")"
+# Resolve target directories
+case $SCOPE in
+    user)
+        TARGETS=("$HOME/.agents/skills/$SKILL_NAME" "$HOME/.claude/skills/$SKILL_NAME")
+        ;;
+    project)
+        TARGETS=(".agents/skills/$SKILL_NAME" ".claude/skills/$SKILL_NAME")
+        ;;
+    custom)
+        TARGETS=("$CUSTOM_PATH")
+        ;;
+esac
 
-# Check if destination already exists
-if [ -d "$INSTALL_PATH" ]; then
-    echo "Warning: '$INSTALL_PATH' already exists"
-    read -p "Overwrite? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Installation cancelled"
-        exit 0
+install_to() {
+    local dest="$1"
+    mkdir -p "$(dirname "$dest")"
+
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        echo "Warning: '$dest' already exists"
+        read -p "Overwrite? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Skipped $dest"
+            return
+        fi
+        rm -rf "$dest"
     fi
-    rm -rf "$INSTALL_PATH"
-fi
 
-# Copy skill files
-echo "Installing Solana Dev Skill..."
-cp -r "$SOURCE_DIR" "$INSTALL_PATH"
+    if [ "$LINK" = true ]; then
+        ln -s "$SOURCE_DIR" "$dest"
+        echo "Linked:    $dest -> $SOURCE_DIR"
+    else
+        cp -r "$SOURCE_DIR" "$dest"
+        echo "Installed: $dest"
+    fi
+}
 
+echo "Installing Solana Dev Skill ($SKILL_NAME)..."
 echo ""
-echo "Successfully installed to: $INSTALL_PATH"
-echo ""
-echo "Installed files:"
-find "$INSTALL_PATH" -type f -name "*.md" | while read -r file; do
-    echo "  - $(basename "$file")"
+for target in "${TARGETS[@]}"; do
+    install_to "$target"
 done
+
 echo ""
-echo "The skill is now available in Claude Code."
-echo "Try asking about Solana development to activate it!"
+echo "Done. Agents that read these directories will pick up the skill automatically:"
+echo "  .agents/skills  -> Codex, Copilot, Gemini CLI, Cursor, Windsurf, OpenCode, and more"
+echo "  .claude/skills  -> Claude Code, Cline, and compat readers"
+echo ""
+echo "Try asking your agent about Solana development to activate it."

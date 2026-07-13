@@ -1,13 +1,32 @@
 ---
 title: React Hooks Reference
-description: Low-level wallet hooks from @solana/react for wallet selection, signing, and transaction sending in React apps.
+description: Kit-native client bindings (ClientProvider, useClient, data hooks) and low-level Wallet Standard hooks from @solana/react.
 ---
 
 # Solana Kit React Reference
 
-`@solana/react` provides low-level wallet hooks for Solana Kit.
+`@solana/react` (v7+) has two layers:
 
-## Setup
+1. **Kit client bindings** — `ClientProvider`, `useClient`, `useClientCapability`, and data hooks (`useAction`, `useRequest`, `useSubscription`, `useTrackedData`) with SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`) adapters. Use these with a Kit plugin client (see [plugins.md](plugins.md)); pair with `@solana/kit-plugin-wallet` for wallet connection. This is the default path for app development — see [../frontend.md](../frontend.md).
+2. **Low-level Wallet Standard hooks** — wallet selection, signing, and sending, documented below. Reach for these when you need fine-grained control over accounts and signers without a full client.
+
+## Kit Client Bindings
+
+```tsx
+import { ClientProvider, useClient } from '@solana/react';
+
+function App() {
+  return <ClientProvider client={client}>{/* ... */}</ClientProvider>;
+}
+
+function Balance({ address }: { address: Address }) {
+  const client = useClient();
+  // data hooks: useRequest / useSubscription / useTrackedData / useAction
+  // or use the SWR / TanStack Query adapters for caching + revalidation
+}
+```
+
+## Wallet Standard Hooks Setup
 
 ```tsx
 import {

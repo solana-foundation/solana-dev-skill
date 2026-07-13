@@ -84,6 +84,35 @@ await client.sendTransaction([myInstruction]);
 
 `litesvm()` is Node.js only. Browser/React Native builds throw.
 
+### Browser Wallet Client (`@solana/kit-plugin-wallet`)
+
+Wallet Standard-based wallet connection as a Kit plugin — the wallet fills the signer role(s) instead of a keypair:
+
+```bash
+npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-wallet @solana/kit-plugin-instruction-plan
+```
+
+```ts
+import { createClient } from '@solana/kit';
+import { solanaRpc } from '@solana/kit-plugin-rpc';
+import { walletSigner } from '@solana/kit-plugin-wallet';
+import { planAndSendTransactions } from '@solana/kit-plugin-instruction-plan';
+
+const client = createClient()
+  .use(walletSigner({ chain: 'solana:mainnet' }))
+  .use(solanaRpc({ rpcUrl: 'https://api.mainnet-beta.solana.com' }))
+  .use(planAndSendTransactions());
+
+// Discover and connect a Wallet Standard wallet
+const { wallets } = client.wallet.getState();
+await client.wallet.connect(wallets[0]);
+
+// The connected wallet is now the payer/identity
+await client.sendTransaction([myInstruction]);
+```
+
+Variants mirror the signer plugin roles: `walletSigner` (both roles), `walletPayer`, `walletIdentity`, plus `walletWithoutSigner` for discovery/connection state only. In React apps, pair the client with `@solana/react` — see [react.md](react.md).
+
 ---
 
 ## Client API Surface
@@ -211,9 +240,11 @@ const client = await createClient()
 |---------|---------|---------|
 | `@solana/kit-plugin-rpc` | `solanaRpc`, `solanaMainnetRpc`, `solanaDevnetRpc`, `solanaLocalRpc`, `rpc`, `solanaRpcConnection`, `rpcAirdrop`, `rpcGetMinimumBalance`, `rpcTransactionPlanner`, `rpcTransactionPlanExecutor` | RPC connectivity + tx planning/execution |
 | `@solana/kit-plugin-signer` | `signer*` (default — sets both roles), `payer*`, `identity*` (role-specific); each comes in plain, `generated*`, `*WithSol`, `*FromFile`, and `airdrop*` forms | Signer management |
+| `@solana/kit-plugin-wallet` | `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner` | Browser wallet connection (Wallet Standard); adds `client.wallet` |
 | `@solana/kit-plugin-litesvm` | `litesvm`, `litesvmConnection`, `litesvmAirdrop`, `litesvmTransactionPlanner`, `litesvmTransactionPlanExecutor` | In-memory test environment |
-| `@solana/kit-plugin-airdrop` | `airdrop`, `rpcAirdrop` | SOL faucet (typically pulled in transitively) |
-| `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions` | Instruction batching + sending sugar |
+| `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions`, `transactionPlanner`, `transactionPlanExecutor` | Instruction batching + sending sugar |
+
+**Deprecated — do not install:** `@solana/kit-plugins` (umbrella), `@solana/kit-plugin-airdrop` (use `rpcAirdrop` / `litesvmAirdrop`), `@solana/kit-plugin-payer` (use `@solana/kit-plugin-signer`), `@solana/kit-client-rpc` / `@solana/kit-client-litesvm` (use the all-in-one plugins above).
 
 ### Program Plugins
 
@@ -238,7 +269,13 @@ await client.token.instructions
 
 | Package | Plugin | Adds |
 |---------|--------|------|
-| `@solana-program/token` | `tokenProgram()` | `client.token.instructions` (createMint, mintToATA, transferToATA, etc.) |
+| `@solana-program/token` | `tokenProgram()` | `client.token` (createMint, mintToATA, transferToATA, batch, etc.) |
+| `@solana-program/token-2022` | `token2022Program()` | `client.token2022` (Token Extensions operations) |
+| `@solana-program/system` | `systemProgram()` | `client.system` (account creation, transfers, nonces) |
+| `@solana-program/compute-budget` | `computeBudgetProgram()` | `client.computeBudget` (CU limits, priority fees) |
+| `@solana-program/memo` | `memoProgram()` | `client.memo` |
+
+> Peer-dep note: some `@solana-program/*` releases still declare `@solana/kit ^6.x` peers while Kit is at 7.x. They work with Kit 7 — override the peer range if your package manager complains, and check for republished versions.
 
 ### Example Implementations
 

@@ -8,21 +8,24 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 ## Learning Platforms
 - [Blueshift](https://learn.blueshift.gg/) - Free, open-source Solana learning platform
 - [Blueshift GitHub](https://github.com/blueshift-gg) - Course content and tools
+- [Blueshift Research](https://blueshift.gg/research/) - Ecosystem research and announcements
 - [Solana Cookbook](https://solanacookbook.com/)
 
 ## Core Solana Docs
 - [Solana Documentation](https://solana.com/docs) (Core, RPC, Frontend, Programs)
-- [Next.js + Solana React Hooks](https://solana.com/docs/frontend/nextjs-solana)
-- [@solana/web3-compat](https://solana.com/docs/frontend/web3-compat)
 - [RPC API Reference](https://solana.com/docs/rpc)
 
 ## Modern JS/TS SDK
 - [@solana/kit Repository](https://github.com/anza-xyz/kit)
-- [Solana Kit Docs](https://solana.com/docs/clients/kit) (installation, upgrade guide)
+- [Solana Kit Docs](https://www.solanakit.com/) (createClient, plugins, getting started)
+- [Kit Plugins Repository](https://github.com/anza-xyz/kit-plugins) (rpc, signer, wallet, litesvm, instruction-plan)
+- [Solana Kit Docs on solana.com](https://solana.com/docs/clients/kit)
 
-## UI and Wallet Infrastructure
-- [framework-kit Repository](https://github.com/solana-foundation/framework-kit) (@solana/client, @solana/react-hooks)
-- [ConnectorKit](https://github.com/civic-io/connector-kit) (headless Wallet Standard connector)
+## web3.js v3 (classic API on Kit internals)
+- [solana-web3.js v3.x branch](https://github.com/solana-foundation/solana-web3.js/tree/v3.x)
+- [v1 → v3 Migration Guide](https://github.com/solana-foundation/solana-web3.js/blob/v3.x/docs/web3js-v1-to-v3-migration.md)
+- [Sunrising Web3.js announcement](https://blueshift.gg/research/sunrising-web3js-reuniting-solanas-typescript-ecosystem)
+- [web3.js API docs](https://solana-foundation.github.io/solana-web3.js/)
 
 ## Scaffolding
 - [create-solana-dapp](https://github.com/solana-developers/create-solana-dapp)
@@ -30,7 +33,7 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 ## Program Frameworks
 
 ### Anchor
-- [Anchor Repository](https://github.com/coral-xyz/anchor)
+- [Anchor Repository](https://github.com/solana-foundation/anchor)
 - [Anchor Documentation](https://www.anchor-lang.com/)
 - [Anchor Version Manager (AVM)](https://www.anchor-lang.com/docs/avm)
 
@@ -43,24 +46,23 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 
 ## Testing
 
+### Surfpool
+- [Surfpool Documentation](https://docs.surfpool.run/)
+- [Surfpool Repository](https://github.com/solana-foundation/surfpool)
+
 ### LiteSVM
 - [LiteSVM Repository](https://github.com/LiteSVM/litesvm)
 - [litesvm crate](https://crates.io/crates/litesvm)
 - [litesvm npm](https://www.npmjs.com/package/litesvm)
 
 ### Mollusk
-- [Mollusk Repository](https://github.com/buffalojoec/mollusk)
+- [Mollusk Repository](https://github.com/anza-xyz/mollusk)
 - [mollusk-svm crate](https://crates.io/crates/mollusk-svm)
-
-### Surfpool
-- [Surfpool Documentation](https://docs.surfpool.run/)
-- [Surfpool Repository](https://github.com/txtx/surfpool)
 
 ## IDLs and Codegen
 - [Codama Repository](https://github.com/codama-idl/codama)
 - [Codama Generating Clients](https://solana.com/docs/programs/codama-generating-clients)
 - [Shank (Metaplex)](https://github.com/metaplex-foundation/shank)
-- [Kinobi (Metaplex)](https://github.com/metaplex-foundation/kinobi)
 
 ## Tokens and NFTs
 - [SPL Token Documentation](https://spl.solana.com/token)
@@ -68,9 +70,8 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 - [Metaplex Documentation](https://developers.metaplex.com/)
 
 ## Payments
-- [Commerce Kit Repository](https://github.com/solana-foundation/commerce-kit)
-- [Commerce Kit Documentation](https://commercekit.solana.com/)
 - [Kora Documentation](https://docs.kora.network/)
+- [Solana Pay](https://docs.solanapay.com/)
 
 ## Security
 - [Blueshift Program Security Course](https://learn.blueshift.gg/en/courses/program-security)
@@ -79,3 +80,8 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 - [Solana Optimized Programs](https://github.com/Laugharne/solana_optimized_programs)
 - [sBPF Assembly SDK](https://github.com/blueshift-gg/sbpf)
 - [Doppler Oracle (21 CU)](https://github.com/blueshift-gg/doppler)
+
+## Agent Skills
+- [Agent Skills Specification](https://agentskills.io/specification)
+- [skills.sh (skill discovery + installer)](https://www.skills.sh/)
+- [web3.js v1→v3 migration skill](https://github.com/solana-foundation/solana-web3.js/tree/v3.x/skills/web3js-v1-to-v3-migration)

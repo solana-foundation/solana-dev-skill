@@ -3,7 +3,7 @@ title: IDL & Client Code Generation
 description: Generate type-safe program clients from IDLs using Codama, eliminating hand-maintained serializers across languages.
 ---
 
-# IDLs + client generation (Codama / Shank / Kinobi)
+# IDLs + client generation (Codama / Shank)
 
 ## Goal
 Never hand-maintain multiple program clients by manually re-implementing serializers.
