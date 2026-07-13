@@ -67,6 +67,7 @@ Use `@solana/kit` (7.x) with the LiteSVM plugin — the same client API as produ
 
 ```bash
 npm i --save-dev litesvm @solana/kit-plugin-litesvm @solana/kit-plugin-signer
+npm i @solana/kit @solana-program/system
 ```
 
 ```typescript
@@ -226,7 +227,7 @@ Prefer the embedded SDK for test suites: each suite owns its surfnet lifecycle a
 
 ```bash
 npm i --save-dev @solana/surfpool vitest
-npm i @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
+npm i @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer @solana-program/system
 ```
 
 ```typescript
