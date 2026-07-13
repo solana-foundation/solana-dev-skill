@@ -408,18 +408,26 @@ jobs:
       - name: Run unit tests
         run: cargo test-sbf
 
+  # Embedded SDK: @solana/surfpool ships its own native binaries —
+  # no Surfpool CLI install step needed.
   integration-tests:
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
       - uses: actions/checkout@v4
-      - name: Install Surfpool          # only needed for CLI-spawned surfnets
-        run: curl -sL https://run.surfpool.run/ | bash
       - name: Run integration tests (embedded SDK)
         run: npx vitest run --config vitest.config.surfpool.ts
-      # Alternative: CLI daemon
-      # - run: NO_DNA=1 surfpool start --ci --daemon
-      # - run: cargo test --test integration
+
+  # Alternative: CLI-spawned daemon (only this variant needs the CLI installed)
+  # integration-tests-cli:
+  #   runs-on: ubuntu-latest
+  #   needs: unit-tests
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Surfpool
+  #       run: curl -sL https://run.surfpool.run/ | bash
+  #     - run: NO_DNA=1 surfpool start --ci --daemon
+  #     - run: cargo test --test integration
 ```
 
 Always prefix agent-run surfpool commands with `NO_DNA=1` (see [no-dna.org](https://no-dna.org)).

@@ -266,7 +266,7 @@ cargo update constant_time_eq --precise 0.4.1
 cargo update blake3 --precise 1.5.5
 ```
 
-Additionally, if you encounter warnings about `solana-program` conflicts, add `solana-program = "3"` to the `[dependencies]` section in your program's `Cargo.toml` file (e.g., `programs/your-program/Cargo.toml`).
+Additionally, if you encounter warnings about `solana-program` conflicts, pin the v2 crate line explicitly by adding `solana-program = "2"` to the `[dependencies]` section in your program's `Cargo.toml` file (e.g., `programs/your-program/Cargo.toml`). Anchor 0.32.x is on the Solana **v2** crate ecosystem — do **not** pin `solana-program = "3"` on a 0.32 project; it forces a resolution incompatible with Anchor 0.32's own dependency graph. Bumping all `solana-*` crates to `^3` happens only as part of the v0.32 → v1 migration (see below).
 
 
 ## Security Best Practices
