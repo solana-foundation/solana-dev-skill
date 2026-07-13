@@ -232,7 +232,18 @@ npm i @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
 ```typescript
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Surfnet } from '@solana/surfpool';
-import { createClient, address, lamports } from '@solana/kit';
+import {
+    address,
+    appendTransactionMessageInstruction,
+    createClient,
+    createTransactionMessage,
+    getBase64EncodedWireTransaction,
+    lamports,
+    pipe,
+    setTransactionMessageFeePayerSigner,
+    setTransactionMessageLifetimeUsingBlockhash,
+    signTransactionMessageWithSigners,
+} from '@solana/kit';
 import { solanaRpc } from '@solana/kit-plugin-rpc';
 import { generatedSigner } from '@solana/kit-plugin-signer';
 import { getTransferSolInstruction } from '@solana-program/system';
@@ -306,11 +317,7 @@ describe('deposit flow', () => {
 
     it('stays under the CU budget', async () => {
         // Build + sign the transaction under test, then encode it to
-        // base64 wire format for profiling. Extra imports from '@solana/kit':
-        // pipe, createTransactionMessage, setTransactionMessageFeePayerSigner,
-        // setTransactionMessageLifetimeUsingBlockhash,
-        // appendTransactionMessageInstruction,
-        // signTransactionMessageWithSigners, getBase64EncodedWireTransaction
+        // base64 wire format for profiling
         const ix = getTransferSolInstruction({
             source: client.payer,
             destination: address('11111111111111111111111111111111'),
