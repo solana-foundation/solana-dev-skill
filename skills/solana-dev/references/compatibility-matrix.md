@@ -209,19 +209,10 @@ OS: Ubuntu 24.04+ (GLIBC ≥2.39) or macOS 14+
 Test runner: surfpool (default in anchor test)
 ```
 
-### 🟢 Modern (Recommended for existing 0.32 projects — Jan 2026)
-```
-Anchor CLI: 0.31.1
-Solana CLI: 2.1.7 (stable)
-Rust: 1.83.0
-Platform Tools: v1.50
-Node.js: 20.x LTS
-OS: Ubuntu 24.04 or macOS 14+
-```
-
-### 🟢 Latest 0.32.x (Cutting edge pre-v1)
+### 🟢 Anchor 0.32.x (Recommended for existing 0.32 projects staying pre-v1)
 ```
 Anchor CLI: 0.32.1
+anchor-lang: 0.32.1 (CLI and crate versions must match)
 Solana CLI: 2.1.7+
 Rust: 1.84.0+
 Platform Tools: v1.52
