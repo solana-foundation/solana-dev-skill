@@ -205,8 +205,8 @@ pub token_program: Interface<'info, TokenInterface>,
 Heap-allocated, read-only account access for efficient memory usage:
 
 ```rust
-// Cargo.toml
-anchor-lang = { version = "0.31.1", features = ["lazy-account"] }
+// Cargo.toml — match the version to your Anchor CLI (1.1.x current)
+anchor-lang = { version = "1.1.2", features = ["lazy-account"] }
 
 // Usage
 pub account: LazyAccount<'info, CustomAccountType>,
