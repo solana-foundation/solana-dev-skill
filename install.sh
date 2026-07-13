@@ -84,12 +84,18 @@ install_to() {
     mkdir -p "$(dirname "$dest")"
 
     if [ -e "$dest" ] || [ -L "$dest" ]; then
-        echo "Warning: '$dest' already exists"
-        read -p "Overwrite? (y/N) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "Skipped $dest"
-            return
+        if [ -t 0 ]; then
+            echo "Warning: '$dest' already exists"
+            # `|| true` guards set -e if stdin closes mid-read
+            read -p "Overwrite? (y/N) " -n 1 -r || true
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Skipped $dest"
+                return
+            fi
+        else
+            # Non-interactive (piped/CI): reinstall over the existing copy
+            echo "'$dest' already exists — overwriting (non-interactive)"
         fi
         rm -rf "$dest"
     fi

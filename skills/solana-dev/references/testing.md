@@ -305,6 +305,26 @@ describe('deposit flow', () => {
     });
 
     it('stays under the CU budget', async () => {
+        // Build + sign the transaction under test, then encode it to
+        // base64 wire format for profiling. Extra imports from '@solana/kit':
+        // pipe, createTransactionMessage, setTransactionMessageFeePayerSigner,
+        // setTransactionMessageLifetimeUsingBlockhash,
+        // appendTransactionMessageInstruction,
+        // signTransactionMessageWithSigners, getBase64EncodedWireTransaction
+        const ix = getTransferSolInstruction({
+            source: client.payer,
+            destination: address('11111111111111111111111111111111'),
+            amount: lamports(1_000n),
+        });
+        const { value: blockhash } = await client.rpc.getLatestBlockhash().send();
+        const signedTx = await signTransactionMessageWithSigners(pipe(
+            createTransactionMessage({ version: 0 }),
+            m => setTransactionMessageFeePayerSigner(client.payer, m),
+            m => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
+            m => appendTransactionMessageInstruction(ix, m),
+        ));
+        const base64VersionedTx = getBase64EncodedWireTransaction(signedTx);
+
         // Simulates WITHOUT committing state; returns CU + pre/post snapshots
         const profile = await cheatcode(surfnet.rpcUrl, 'surfnet_profileTransaction', [
             base64VersionedTx, // base64-encoded VersionedTransaction
