@@ -116,8 +116,12 @@ for target in "${TARGETS[@]}"; do
 done
 
 echo ""
-echo "Done. Agents that read these directories will pick up the skill automatically:"
-echo "  .agents/skills  -> Codex, Copilot, Gemini CLI, Cursor, Windsurf, OpenCode, and more"
-echo "  .claude/skills  -> Claude Code, Cline, and compat readers"
+if [ "$SCOPE" = "custom" ]; then
+    echo "Done. Make sure '$CUSTOM_PATH' is a directory your agent scans for skills."
+else
+    echo "Done. Agents that read these directories will pick up the skill automatically:"
+    echo "  .agents/skills  -> Codex, Copilot, Gemini CLI, Cursor, Windsurf, OpenCode, and more"
+    echo "  .claude/skills  -> Claude Code, Cline, and compat readers"
+fi
 echo ""
 echo "Try asking your agent about Solana development to activate it."

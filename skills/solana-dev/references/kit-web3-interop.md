@@ -56,11 +56,13 @@ Breaking themes to apply when migrating:
 | `Buffer` account data | `Uint8Array` (and readonly RPC results; `AccountInfo` gains `space: bigint`) |
 | `PublicKey.unique()`, `Account`, `FeeCalculator`, `getRecentBlockhash*` | Removed |
 
-There is an official migration agent skill you can install and run:
+There is an official migration agent skill you can install and run (the skills CLI accepts GitHub subdirectory URLs):
 
 ```bash
 npx skills add https://github.com/solana-foundation/solana-web3.js/tree/v3.x/skills/web3js-v1-to-v3-migration
 ```
+
+If the URL form fails, install from the repo and select the skill: `npx skills add solana-foundation/solana-web3.js -s web3js-v1-to-v3-migration` — the skill lives at [`skills/web3js-v1-to-v3-migration/SKILL.md`](https://github.com/solana-foundation/solana-web3.js/blob/v3.x/skills/web3js-v1-to-v3-migration/SKILL.md) on the `v3.x` branch.
 
 A companion guide covers `@solana/spl-token` → `@solana-program/token` (`docs/web3js-spl-token-migration.md` in the same repo).
 
