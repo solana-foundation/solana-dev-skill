@@ -15,7 +15,7 @@ description: Build React and Next.js Solana apps with a Kit plugin client, Walle
 - `@solana/kit` (v7+)
 - `@solana/kit-plugin-rpc`, `@solana/kit-plugin-wallet`, `@solana/kit-plugin-instruction-plan`
 - `@solana/react` (v7+ — Kit-native React bindings + Wallet Standard hooks)
-- `@solana-program/system`, `@solana-program/token`, etc. (only what you need)
+- `@solana-program/system`, `@solana-program/token`, `@your-program/codama-client` etc. (only what you need)
 
 Do **not** use `@solana/client` / `@solana/react-hooks` (framework-kit) for new work — that stack is stale; the maintained path is Kit plugins + `@solana/react`. Do not use `@solana/wallet-adapter-*` for new apps either; Wallet Standard discovery covers modern wallets.
 
@@ -45,7 +45,6 @@ const rpcUrl =
 export const client = createClient()
   .use(walletSigner({ chain: 'solana:devnet' }))
   .use(solanaRpc({ rpcUrl }))
-  .use(planAndSendTransactions());
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return <ClientProvider client={client}>{children}</ClientProvider>;
@@ -86,13 +85,13 @@ With the wallet plugin installed, `client.sendTransaction` plans, asks the walle
 
 ```tsx
 import { getTransferSolInstruction } from '@solana-program/system';
-import { address, lamports } from '@solana/kit';
+import { address, sol } from '@solana/kit';
 
 async function sendTip(to: string) {
   const ix = getTransferSolInstruction({
     source: client.payer,
     destination: address(to),
-    amount: lamports(10_000_000n), // 0.01 SOL
+    amount: sol('0.01'),
   });
   return await client.sendTransaction([ix]);
 }

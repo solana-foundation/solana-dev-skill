@@ -47,11 +47,12 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 ## Testing
 
 ### Surfpool
-- [Surfpool Documentation](https://docs.surfpool.run/)
+- [Surfpool Documentation](https://solana.com/docs/tools/surfpool/)
 - [Surfpool Repository](https://github.com/solana-foundation/surfpool)
 
 ### LiteSVM
 - [LiteSVM Repository](https://github.com/LiteSVM/litesvm)
+- [LiteSVM Docs](https://solana.com/docs/tools/litesvm)
 - [litesvm crate](https://crates.io/crates/litesvm)
 - [litesvm npm](https://www.npmjs.com/package/litesvm)
 

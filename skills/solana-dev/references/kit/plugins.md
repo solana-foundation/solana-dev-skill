@@ -101,7 +101,6 @@ import { planAndSendTransactions } from '@solana/kit-plugin-instruction-plan';
 const client = createClient()
   .use(walletSigner({ chain: 'solana:mainnet' }))
   .use(solanaRpc({ rpcUrl: 'https://api.mainnet-beta.solana.com' }))
-  .use(planAndSendTransactions());
 
 // Discover and connect a Wallet Standard wallet
 const { wallets } = client.wallet.getState();

@@ -44,7 +44,7 @@ const STORAGE_KEY = 'wallet-account';
 function App() {
   return (
     <SelectedWalletAccountContextProvider
-      filterWallet={(wallet) => wallet.accounts.length > 0}
+      filterWallets={(wallet) => wallet.accounts.length > 0}
       stateSync={{
         getSelectedWallet: () => localStorage.getItem(STORAGE_KEY),
         storeSelectedWallet: (k) => localStorage.setItem(STORAGE_KEY, k),

@@ -7,7 +7,7 @@ description: A drop-in replacement for solana-test-validator with sub-second sta
 
 ## What is Surfpool
 
-Surfpool ([solana-foundation/surfpool](https://github.com/solana-foundation/surfpool), docs at [docs.surfpool.run](https://docs.surfpool.run), latest release **v1.5.0**) is a drop-in replacement for `solana-test-validator` built on [LiteSVM](https://github.com/LiteSVM/litesvm). It provides a local Solana network (called a "surfnet") with sub-second startup, automatic mainnet state cloning, transaction profiling, and a built-in web UI (Studio).
+Surfpool ([solana-foundation/surfpool](https://github.com/solana-foundation/surfpool), docs at [solana.com/docs/tools](https://solana.com/docs/tools/surfpool), latest release **v1.5.0**) is a drop-in replacement for `solana-test-validator` built on [LiteSVM](https://github.com/LiteSVM/litesvm). It provides a local Solana network (called a "surfnet") with sub-second startup, automatic mainnet state cloning, transaction profiling, and a built-in web UI (Studio).
 
 Key differences from `solana-test-validator`:
 - **Instant startup** — no genesis ledger to bootstrap; the SVM runs in-process.

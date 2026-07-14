@@ -7,9 +7,9 @@ description: Use web3.js v3 — the class-based API rebuilt on Solana Kit intern
 
 ## The landscape (2026)
 
-`@solana/web3.js` v3 is a rebuild of the classic class-based API (`Connection`, `Keypair`, `Transaction`) **on top of `@solana/kit` internals**. It was co-developed by Blueshift and the Solana Foundation ("Sunrising Web3.js") and reunifies the TypeScript ecosystem: Kit is the foundation, web3.js is the front door.
+`@solana/web3.js` v3 is a rebuild of the classic class-based API (`Connection`, `Keypair`, `Transaction`) **on top of `@solana/kit` internals**. It was co-developed by Blueshift and the Solana Foundation and reunifies the TypeScript ecosystem.
 
-- **New greenfield code:** use `@solana/kit` directly (tree-shakable, functional, plugin clients).
+- **New greenfield code:** use `@solana/kit` directly (tree-shakable, functional, plugin clients). See [kit/overview.md](kit/overview.md).
 - **Existing web3.js v1 codebases / teams with v1 muscle memory:** migrate to web3.js v3. Same import path, same classes, Kit underneath.
 - **`@solana/web3-compat` is superseded.** It was an interim shim (web3.js 1.x API delegating to Kit 5). Do not introduce it in new work; replace it with web3.js v3 where found.
 
