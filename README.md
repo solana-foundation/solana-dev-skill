@@ -1,5 +1,9 @@
 # Solana Development Skill
 
+<p align="center">
+  <img src="assets/banner.png" alt="solana-dev — npx skills add solana-dev — skill installed, 8 agents" width="100%" />
+</p>
+
 A comprehensive [Agent Skill](https://agentskills.io/) for modern Solana development (July 2026 best practices). Works with every coding agent that has direct Agent Skills support: **Claude Code, OpenAI Codex / ChatGPT desktop, GitHub Copilot (CLI + coding agent), Gemini CLI, Cursor, Windsurf, Cline, OpenCode**, and anything else that reads `SKILL.md`.
 
 ## Overview
