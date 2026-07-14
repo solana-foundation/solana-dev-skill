@@ -151,5 +151,5 @@ Kit will ship dedicated hooks for this shortly (e.g. `useSendTransaction(client,
 
 ## Legacy apps
 
-- App built on web3.js v1 + wallet-adapter? Migrate to web3.js v3 (Kit internals, same classes) first — see [kit-web3-interop.md](kit-web3-interop.md) — then adopt Kit plugins incrementally.
+- App built on web3.js v1 + wallet-adapter? Migrate to web3.js v3 (Kit internals, same classes; currently RC) first — see [kit-web3-interop.md](kit-web3-interop.md) for routing to the official migration skill — then adopt Kit plugins incrementally.
 - Found `@solana/client` / `@solana/react-hooks` (framework-kit)? Migrate to the Kit plugin client + `@solana/react`: `createClient({ endpoint, walletConnectors })` becomes `createClient().use(walletSigner(...)).use(solanaRpc(...))`, and framework-kit hooks map to the `@solana/kit-plugin-wallet/react` hooks or `client.wallet` state.

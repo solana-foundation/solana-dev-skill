@@ -1,6 +1,6 @@
 ---
 name: solana-dev
-description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). Also use for quick on-chain lookups via public RPC + curl — "what's the balance of <wallet>", "look up transaction <sig>", "token balance for <account>", "check this address on mainnet/devnet". End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, Surfpool/LiteSVM/Mollusk testing, security checklists, and JSON-RPC curl lookups against public clusters. Prefers @solana/kit v7 plugin clients (createClient + .use()), wallet connection via @solana/kit-plugin-wallet + @solana/react, web3.js v3 (Kit internals) for legacy codebases, and Surfpool for local networks and integration testing.
+description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", or "explain Solana concepts" (rent, accounts, PDAs, CPIs, etc.). Also use for quick on-chain lookups via public RPC + curl — "what's the balance of <wallet>", "look up transaction <sig>", "token balance for <account>", "check this address on mainnet/devnet". End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, Surfpool/LiteSVM/Mollusk testing, security checklists, and JSON-RPC curl lookups against public clusters. Prefers @solana/kit v7 plugin clients (createClient + .use()), wallet connection via @solana/kit-plugin-wallet + @solana/react, web3.js v3 (Kit internals, RC) as the migration target for legacy codebases, and Surfpool for local networks and integration testing.
 license: MIT
 compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
@@ -47,9 +47,10 @@ Use this Skill when the user asks for:
 - Client bindings via `@solana/react` v7 (`ClientProvider`, typed `useClient<AppClient>`, data hooks, SWR/TanStack adapters). Its legacy Wallet Standard hooks are being deprecated — don't use them.
 - Do **not** use `@solana/client` / `@solana/react-hooks` (framework-kit) or `@solana/wallet-adapter-*` for new work.
 
-3) **Legacy compatibility: web3.js v3**
-- web3.js v3 (`npm install @solana/web3.js@rc`) is the classic class-based API rebuilt on Kit internals — `PublicKey` is an alias of `Address`, `Keypair` satisfies Kit's `KeyPairSigner`, signing is async.
-- Migrating a v1 codebase: move to v3 (mechanical changes), then adopt Kit incrementally. Do not introduce `@solana/web3-compat` — it is superseded; replace it with v3 where found.
+3) **Legacy compatibility: web3.js v3 (RC)**
+- web3.js v3 (`@solana/web3.js@rc`) is the classic class-based API rebuilt on Kit internals. It is still a release candidate — treat it as the migration target for v1 codebases, not a default recommendation for new work.
+- Migrating a v1 codebase: use the official migration skill from the solana-web3.js repo rather than hand-migrating — see [kit-web3-interop.md](references/kit-web3-interop.md) for routing.
+- Do not introduce `@solana/web3-compat` in new work — it is superseded.
 - Do not let legacy class types leak across the entire app; contain them to adapter modules.
 
 4) **Programs**
@@ -101,7 +102,7 @@ When solving a Solana task:
 ### 2. Pick the right building blocks
 - UI: Kit plugin client (`walletSigner` + `solanaRpc`) + `@solana/react`.
 - Scripts/backends: @solana/kit directly.
-- Legacy web3.js v1 code or dependency: migrate to web3.js v3; keep class types in adapter modules.
+- Legacy web3.js v1 code or dependency: route via [kit-web3-interop.md](references/kit-web3-interop.md) (migration skill for v1→v3; keep class types in adapter modules).
 - High-performance programs: Pinocchio over Anchor.
 
 ### 3. Implement with Solana-specific correctness
@@ -168,7 +169,7 @@ Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local
 - Kit Plugins & Composition: [kit/plugins.md](references/kit/plugins.md) — ready-to-use clients, wallet plugin, custom composition, available plugins
 - Kit Advanced: [kit/advanced.md](references/kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
 - UI + wallet + hooks: [frontend.md](references/frontend.md)
-- Kit ↔ web3.js v3 boundary + v1 migration: [kit-web3-interop.md](references/kit-web3-interop.md)
+- Legacy web3.js routing (v3 status + migration skill): [kit-web3-interop.md](references/kit-web3-interop.md)
 - Anchor programs: [programs/anchor.md](references/programs/anchor.md)
 - Pinocchio programs: [programs/pinocchio.md](references/programs/pinocchio.md)
 - Testing strategy (Surfpool/LiteSVM/Mollusk): [testing.md](references/testing.md)

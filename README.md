@@ -8,7 +8,7 @@ This skill gives your coding agent deep knowledge of the current Solana developm
 
 - **SDK**: `@solana/kit` v7 plugin clients (`createClient()` + `.use()`)
 - **UI**: Wallet Standard connection via `@solana/kit-plugin-wallet` + `@solana/react`
-- **Legacy Interop**: web3.js v3 — the classic API rebuilt on Kit internals
+- **Legacy Interop**: web3.js v3 (RC) — the classic API rebuilt on Kit internals, as the migration target for v1 codebases
 - **Programs**: Anchor 1.1.x (default), Pinocchio 0.11+ for high-performance needs
 - **Testing**: Surfpool for integration tests (mainnet forking, cheatcodes, embedded SDK), LiteSVM/Mollusk for unit tests
 - **Codegen**: Codama-first IDL and client generation
@@ -60,7 +60,7 @@ skills/solana-dev/
 └── references/
     ├── kit/                         # @solana/kit: overview, plugins, react, codecs, accounts, codama, gotchas, advanced, programs/
     ├── frontend.md                  # UI patterns (Kit wallet plugin + @solana/react)
-    ├── kit-web3-interop.md          # web3.js v3 boundary + v1 migration
+    ├── kit-web3-interop.md          # Legacy web3.js routing (v3 RC + migration skill)
     ├── testing.md                   # Testing (Surfpool/LiteSVM/Mollusk)
     ├── idl-codegen.md               # IDL and client generation
     ├── payments.md                  # Payments (Kit, Solana Pay, Kora)
@@ -116,7 +116,7 @@ This skill encodes opinionated best practices:
 
 | Layer | Default Choice | Alternative |
 |-------|---------------|-------------|
-| Client SDK | @solana/kit v7 (plugin clients) | web3.js v3 (legacy codebases) |
+| Client SDK | @solana/kit v7 (plugin clients) | web3.js v3 RC (legacy migration target) |
 | Wallet / UI | @solana/kit-plugin-wallet + @solana/react | Wallet Standard hooks directly |
 | Program Framework | Anchor 1.1.x | Pinocchio 0.11+ (performance) |
 | Unit Testing | LiteSVM / Mollusk | — |
