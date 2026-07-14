@@ -43,8 +43,8 @@ Use this Skill when the user asks for:
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
 
 2) **UI: Kit plugin client + @solana/react**
-- Wallet connection via `walletSigner()` from `@solana/kit-plugin-wallet` (Wallet Standard discovery; the connected wallet fills the payer/identity roles).
-- React bindings via `@solana/react` v7 (`ClientProvider`, `useClient`, data hooks, SWR/TanStack adapters, Wallet Standard signing hooks).
+- Wallet connection via `walletSigner()` from `@solana/kit-plugin-wallet` (Wallet Standard discovery; the connected wallet fills the payer/identity roles), with React hooks from `@solana/kit-plugin-wallet/react`.
+- Client bindings via `@solana/react` v7 (`ClientProvider`, typed `useClient<AppClient>`, data hooks, SWR/TanStack adapters). Its legacy Wallet Standard hooks are being deprecated — don't use them.
 - Do **not** use `@solana/client` / `@solana/react-hooks` (framework-kit) or `@solana/wallet-adapter-*` for new work.
 
 3) **Legacy compatibility: web3.js v3**

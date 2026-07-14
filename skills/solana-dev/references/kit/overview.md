@@ -267,7 +267,7 @@ See [codama.md](codama.md) for naming conventions and patterns.
 | `@solana/kit` | Main SDK, re-exports all sub-packages, exports `createClient` |
 | `@solana/kit-plugin-rpc` | All-in-one RPC plugins: `solanaRpc`, `solanaMainnetRpc`, `solanaDevnetRpc`, `solanaLocalRpc` (plus low-level `rpc`, `rpcAirdrop`, `rpcTransactionPlanner`, `rpcTransactionPlanExecutor`) |
 | `@solana/kit-plugin-signer` | Signer plugins. Default `signer*` variants set both `payer` and `identity` (`signer`, `generatedSigner`, `signerFromFile`). Use `airdropSigner` to fund an already-installed signer; use `generatedSignerWithSol` only when an airdrop function is already installed. Role-specific `payer*` and `identity*` variants for when the two roles differ. |
-| `@solana/kit-plugin-wallet` | Browser wallet connection (Wallet Standard): `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner`; adds `client.wallet` (`getState()`, `connect()`) |
+| `@solana/kit-plugin-wallet` | Browser wallet connection (Wallet Standard): `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner`; adds `client.wallet` (`getState()`, `connect()`); React hooks in `@solana/kit-plugin-wallet/react` |
 | `@solana/kit-plugin-litesvm` | All-in-one `litesvm` plugin (Node.js only) for in-memory testing |
 | `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions` and instruction batching primitives |
 | `@solana/addresses` | Address validation |
@@ -282,7 +282,7 @@ See [codama.md](codama.md) for naming conventions and patterns.
 | `@solana/instruction-plans` | Multi-instruction batching |
 | `@solana/errors` | Error identification/decoding |
 | `@solana/functional` | Pipe and compose utilities |
-| `@solana/react` | Kit-native React bindings (`ClientProvider`, `useClient`, data/subscription hooks, SWR & TanStack Query adapters) + Wallet Standard hooks |
+| `@solana/react` | Kit-native React bindings (`ClientProvider`, `useClient`, data/subscription hooks, SWR & TanStack Query adapters). Its legacy Wallet Standard hooks are being deprecated — use `@solana/kit-plugin-wallet/react` |
 | `@solana/compat` | Type conversions between Kit and legacy web3.js v1 values |
 
 **Deprecated packages — do not install:** `@solana/kit-plugins` (umbrella), `@solana/kit-plugin-airdrop` (use `rpcAirdrop`/`litesvmAirdrop`), `@solana/kit-plugin-payer` (use `@solana/kit-plugin-signer`), `@solana/kit-client-rpc` / `@solana/kit-client-litesvm` (use the `solanaRpc` / `litesvm` all-in-one plugins).

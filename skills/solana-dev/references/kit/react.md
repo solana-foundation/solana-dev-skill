@@ -1,150 +1,111 @@
 ---
-title: React Hooks Reference
-description: Kit-native client bindings (ClientProvider, useClient, data hooks) and low-level Wallet Standard hooks from @solana/react.
+title: React Reference
+description: Kit-native React bindings from @solana/react (ClientProvider, typed useClient, data hooks, SWR/TanStack adapters) and wallet React hooks from @solana/kit-plugin-wallet/react.
 ---
 
 # Solana Kit React Reference
 
-`@solana/react` (v7+) has two layers:
+Two packages cover React apps:
 
-1. **Kit client bindings** — `ClientProvider`, `useClient`, `useClientCapability`, and data hooks (`useAction`, `useRequest`, `useSubscription`, `useTrackedData`) with SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`) adapters. Use these with a Kit plugin client (see [plugins.md](plugins.md)); pair with `@solana/kit-plugin-wallet` for wallet connection. This is the default path for app development — see [../frontend.md](../frontend.md).
-2. **Low-level Wallet Standard hooks** — wallet selection, signing, and sending, documented below. Reach for these when you need fine-grained control over accounts and signers without a full client.
+1. **`@solana/react` (v7+)** — Kit client bindings: `ClientProvider`, `useClient`, `useClientCapability`, data hooks (`useAction`, `useRequest`, `useSubscription`, `useTrackedData`), and adapters for SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`).
+2. **`@solana/kit-plugin-wallet/react`** — wallet connection hooks (see below).
 
-## Kit Client Bindings
+> **Deprecation note:** the older Wallet Standard hooks that shipped in `@solana/react` (`SelectedWalletAccountContextProvider`, `useSelectedWalletAccount`, `useSignIn` / `useSignMessage` / `useSignTransaction` / `useSignAndSendTransaction`, `useWalletAccount*Signer`) are being superseded by the wallet-plugin hooks and will be deprecated. Do not use them in new code.
+
+## Client Provider + Typed useClient
+
+Create one client for the app, export its type, and provide it at the root:
 
 ```tsx
-import { ClientProvider, useClient } from '@solana/react';
+// app/providers.tsx
+import { createClient } from '@solana/kit';
+import { solanaRpc } from '@solana/kit-plugin-rpc';
+import { walletSigner } from '@solana/kit-plugin-wallet';
+import { ClientProvider } from '@solana/react';
 
-function App() {
-  return <ClientProvider client={client}>{/* ... */}</ClientProvider>;
+export const client = createClient()
+  .use(walletSigner({ chain: 'solana:devnet' }))
+  .use(solanaRpc({ rpcUrl }));
+
+// Makes every useClient<AppClient>() call fully typed
+export type AppClient = Awaited<typeof client>;
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return <ClientProvider client={client}>{children}</ClientProvider>;
 }
+```
+
+Always pass your client type to `useClient` — a bare `useClient()` gives you an untyped `Client<object>` (and the type parameter is expected to become required):
+
+```tsx
+import { useClient } from '@solana/react';
+import type { AppClient } from '@/app/providers';
 
 function Balance({ address }: { address: Address }) {
-  const client = useClient();
+  const client = useClient<AppClient>();
+  // client.rpc, client.wallet, client.sendTransaction — all typed
   // data hooks: useRequest / useSubscription / useTrackedData / useAction
   // or use the SWR / TanStack Query adapters for caching + revalidation
 }
 ```
 
-## Wallet Standard Hooks Setup
+## Data Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useRequest` | One-shot async reads (RPC calls) |
+| `useSubscription` | WebSocket subscriptions with cleanup |
+| `useTrackedData` | Data that updates from a subscription stream |
+| `useAction` | Wrap async actions (send, connect) with pending/error state |
+
+For caching, revalidation, and request dedup, prefer the framework adapters: `@solana/react/swr` (SWR) and `@solana/react/query` (TanStack Query).
+
+## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
+
+Requires the `walletSigner` (or `walletWithoutSigner`) plugin on the client.
+
+**State hooks:**
+
+| Hook | Returns |
+|------|---------|
+| `useWallets()` | Discovered Wallet Standard wallets for the configured chain |
+| `useConnectedWallet()` | Active connection (`{ account, signer, wallet }`) or `null` |
+| `useWalletStatus()` | `'pending' \| 'disconnected' \| 'connecting' \| 'connected' \| 'disconnecting' \| 'reconnecting'` |
+| `useIsWalletReady()` | `false` during discovery warm-up, then `true` |
+
+**Action hooks** (built on `useAction` — expose `dispatch` + pending/error state):
+
+| Hook | Wraps |
+|------|-------|
+| `useConnect()` | `client.wallet.connect(wallet)` |
+| `useDisconnect()` | `client.wallet.disconnect()` |
+| `useSignIn()` | Sign-In-With-Solana (`client.wallet.signIn(wallet, input)`) |
+| `useSignMessage()` | `client.wallet.signMessage(message)` |
+| `useSelectAccount()` | Switch account within the authorized wallet |
+
+**Component:** `WalletReadyGate` — renders `fallback` until wallet discovery settles.
 
 ```tsx
 import {
-  SelectedWalletAccountContextProvider,
-  useSelectedWalletAccount,
-  useSignAndSendTransaction,
-} from '@solana/react';
-```
+  useConnect,
+  useConnectedWallet,
+  useWallets,
+  WalletReadyGate,
+} from '@solana/kit-plugin-wallet/react';
 
-## Provider
+function WalletPicker() {
+  const wallets = useWallets();
+  const connected = useConnectedWallet();
+  const { dispatch: connect } = useConnect();
 
-```tsx
-const STORAGE_KEY = 'wallet-account';
-
-function App() {
-  return (
-    <SelectedWalletAccountContextProvider
-      filterWallets={(wallet) => wallet.accounts.length > 0}
-      stateSync={{
-        getSelectedWallet: () => localStorage.getItem(STORAGE_KEY),
-        storeSelectedWallet: (k) => localStorage.setItem(STORAGE_KEY, k),
-        deleteSelectedWallet: () => localStorage.removeItem(STORAGE_KEY),
-      }}
-    >
-      <YourApp />
-    </SelectedWalletAccountContextProvider>
-  );
+  if (connected) return <p>{connected.account.address}</p>;
+  return wallets.map((w) => (
+    <button key={w.name} onClick={() => connect(w)}>{w.name}</button>
+  ));
 }
 ```
 
-## Wallet Selection
-
-```tsx
-function WalletSelector() {
-  const [account, setAccount, wallets] = useSelectedWalletAccount();
-
-  if (!account) {
-    return (
-      <div>
-        {wallets.map((wallet) => (
-          <div key={wallet.name}>
-            {wallet.accounts.map((acc) => (
-              <button key={acc.address} onClick={() => setAccount(acc)}>
-                {wallet.name}: {acc.address.slice(0, 8)}...
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p>Connected: {account.address}</p>
-      <button onClick={() => setAccount(undefined)}>Disconnect</button>
-    </div>
-  );
-}
-```
-
-## Sign In With Solana
-
-```tsx
-const signIn = useSignIn(wallet);
-
-const handleSignIn = async () => {
-  const { account, signedMessage, signature } = await signIn({
-    requestId: csrfToken,
-  });
-  // Verify on server
-};
-```
-
-## Sign Message
-
-```tsx
-const signMessage = useSignMessage(account);
-
-const { signature, signedMessage } = await signMessage({
-  message: new TextEncoder().encode('Hello'),
-});
-```
-
-## Sign Transaction
-
-```tsx
-const signTx = useSignTransaction(account, 'solana:devnet');
-
-const { signedTransaction } = await signTx({
-  transaction: txBytes,
-  options: { minContextSlot },
-});
-```
-
-## Sign & Send
-
-```tsx
-const signAndSend = useSignAndSendTransaction(account, 'solana:devnet');
-
-const { signature } = await signAndSend({ transaction: txBytes });
-const base58Sig = getBase58Decoder().decode(signature);
-```
-
-## Transaction Signer Hook
-
-```tsx
-const signer = useWalletAccountTransactionSendingSigner(account, 'solana:devnet');
-
-const message = pipe(
-  createTransactionMessage({ version: 0 }),
-  m => setTransactionMessageFeePayerSigner(signer, m),
-  m => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
-  m => appendTransactionMessageInstruction(instruction, m),
-);
-
-const sig = await signAndSendTransactionMessageWithSigners(message);
-```
+> **API heads-up:** these hooks are moving to take the client as their first parameter — `useConnect(client)`, `useWalletStatus(client)`, `<WalletReadyGate client={client}>` ([kit-plugins#326](https://github.com/anza-xyz/kit-plugins/pull/326)). New Kit hooks will follow the same `(client, input)` pattern (e.g. an upcoming `useSendTransaction(client, input)`), keeping the app fully typed end-to-end. Check the [kit-plugin-wallet README](https://github.com/anza-xyz/kit-plugins/tree/main/packages/kit-plugin-wallet#react-hooks) for current signatures.
 
 ## Chain Identifiers
 
@@ -155,53 +116,6 @@ const sig = await signAndSendTransactionMessageWithSigners(message);
 'solana:localnet'
 ```
 
-## Signer Types
+## Full App Pattern
 
-| Hook | Returns |
-|------|---------|
-| `useWalletAccountMessageSigner` | `MessageModifyingSigner` |
-| `useWalletAccountTransactionSigner` | `TransactionModifyingSigner` |
-| `useWalletAccountTransactionSendingSigner` | `TransactionSendingSigner` |
-
-All return modifying signers (wallets may modify before signing).
-
-## Complete Example
-
-```tsx
-function App() {
-  return (
-    <SelectedWalletAccountContextProvider
-      filterWallet={(w) => w.accounts.length > 0}
-      stateSync={{
-        getSelectedWallet: () => localStorage.getItem('wallet'),
-        storeSelectedWallet: (k) => localStorage.setItem('wallet', k),
-        deleteSelectedWallet: () => localStorage.removeItem('wallet'),
-      }}
-    >
-      <WalletApp />
-    </SelectedWalletAccountContextProvider>
-  );
-}
-
-function WalletApp() {
-  const [account, setAccount, wallets] = useSelectedWalletAccount();
-  const signAndSend = useSignAndSendTransaction(account, 'solana:devnet');
-
-  if (!account) {
-    return wallets.map((w) =>
-      w.accounts.map((a) => (
-        <button key={a.address} onClick={() => setAccount(a)}>
-          {w.name}: {a.address.slice(0, 8)}...
-        </button>
-      ))
-    );
-  }
-
-  return (
-    <div>
-      <p>{account.address}</p>
-      <button onClick={() => setAccount(undefined)}>Disconnect</button>
-    </div>
-  );
-}
-```
+See [../frontend.md](../frontend.md) for the complete Next.js App Router setup (providers, wallet button, transaction sending, data fetching).

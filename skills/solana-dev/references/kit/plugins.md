@@ -89,18 +89,17 @@ await client.sendTransaction([myInstruction]);
 Wallet Standard-based wallet connection as a Kit plugin — the wallet fills the signer role(s) instead of a keypair:
 
 ```bash
-npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-wallet @solana/kit-plugin-instruction-plan
+npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-wallet
 ```
 
 ```ts
 import { createClient } from '@solana/kit';
 import { solanaRpc } from '@solana/kit-plugin-rpc';
 import { walletSigner } from '@solana/kit-plugin-wallet';
-import { planAndSendTransactions } from '@solana/kit-plugin-instruction-plan';
 
 const client = createClient()
   .use(walletSigner({ chain: 'solana:mainnet' }))
-  .use(solanaRpc({ rpcUrl: 'https://api.mainnet-beta.solana.com' }))
+  .use(solanaRpc({ rpcUrl: 'https://api.mainnet-beta.solana.com' })); // bundles tx planning + sending
 
 // Discover and connect a Wallet Standard wallet
 const { wallets } = client.wallet.getState();
@@ -110,7 +109,7 @@ await client.wallet.connect(wallets[0]);
 await client.sendTransaction([myInstruction]);
 ```
 
-Variants mirror the signer plugin roles: `walletSigner` (both roles), `walletPayer`, `walletIdentity`, plus `walletWithoutSigner` for discovery/connection state only. In React apps, pair the client with `@solana/react` — see [react.md](react.md).
+Variants mirror the signer plugin roles: `walletSigner` (both roles), `walletPayer`, `walletIdentity`, plus `walletWithoutSigner` for discovery/connection state only. In React apps, use the hooks from `@solana/kit-plugin-wallet/react` together with `ClientProvider` from `@solana/react` — see [react.md](react.md).
 
 ---
 
@@ -241,7 +240,7 @@ const client = await createClient()
 | `@solana/kit-plugin-signer` | `signer*` (default — sets both roles), `payer*`, `identity*` (role-specific); each comes in plain, `generated*`, `*WithSol`, `*FromFile`, and `airdrop*` forms | Signer management |
 | `@solana/kit-plugin-wallet` | `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner` | Browser wallet connection (Wallet Standard); adds `client.wallet` |
 | `@solana/kit-plugin-litesvm` | `litesvm`, `litesvmConnection`, `litesvmAirdrop`, `litesvmTransactionPlanner`, `litesvmTransactionPlanExecutor` | In-memory test environment |
-| `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions`, `transactionPlanner`, `transactionPlanExecutor` | Instruction batching + sending sugar |
+| `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions`, `transactionPlanner`, `transactionPlanExecutor` | Instruction batching + sending sugar (bundled into `solanaRpc`; install directly only for custom low-level composition) |
 
 **Deprecated — do not install:** `@solana/kit-plugins` (umbrella), `@solana/kit-plugin-airdrop` (use `rpcAirdrop` / `litesvmAirdrop`), `@solana/kit-plugin-payer` (use `@solana/kit-plugin-signer`), `@solana/kit-client-rpc` / `@solana/kit-client-litesvm` (use the all-in-one plugins above).
 

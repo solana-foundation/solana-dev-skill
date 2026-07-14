@@ -86,11 +86,19 @@ install_to() {
     if [ -e "$dest" ] || [ -L "$dest" ]; then
         if [ -t 0 ]; then
             echo "Warning: '$dest' already exists"
-            # `|| true` guards set -e if stdin closes mid-read
-            read -p "Overwrite? (y/N) " -n 1 -r || true
+            # /dev/tty + fallback: never aborts under set -e when stdin closes
+            read -p "Overwrite? (y/N) " -n 1 -r </dev/tty 2>/dev/null || REPLY=""
             echo
-        read -p "Overwrite? (y/N) " -n 1 -r </dev/tty 2>/dev/null || REPLY=""
-        echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Skipped $dest"
+                return
+            fi
+        else
+            # Non-interactive (piped/CI): reinstall over the existing copy
+            echo "'$dest' already exists — overwriting (non-interactive)"
+        fi
+        rm -rf "$dest"
+    fi
 
     if [ "$LINK" = true ]; then
         ln -s "$SOURCE_DIR" "$dest"
