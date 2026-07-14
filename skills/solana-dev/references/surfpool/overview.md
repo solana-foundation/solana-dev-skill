@@ -7,14 +7,15 @@ description: A drop-in replacement for solana-test-validator with sub-second sta
 
 ## What is Surfpool
 
-Surfpool is a drop-in replacement for `solana-test-validator` built on [LiteSVM](https://github.com/LiteSVM/litesvm). It provides a local Solana network (called a "surfnet") with sub-second startup, automatic mainnet state cloning, transaction profiling, and a built-in web UI (Studio).
+Surfpool ([solana-foundation/surfpool](https://github.com/solana-foundation/surfpool), docs at [solana.com/docs/tools](https://solana.com/docs/tools/surfpool), latest release **v1.5.0**) is a drop-in replacement for `solana-test-validator` built on [LiteSVM](https://github.com/LiteSVM/litesvm). It provides a local Solana network (called a "surfnet") with sub-second startup, automatic mainnet state cloning, transaction profiling, and a built-in web UI (Studio).
 
 Key differences from `solana-test-validator`:
 - **Instant startup** — no genesis ledger to bootstrap; the SVM runs in-process.
 - **Mainnet state on demand** — accounts are lazily fetched from a remote RPC and cached locally. No need to pre-clone accounts.
-- **Cheatcodes** — 22 `surfnet_*` RPC methods to manipulate time, accounts, programs, and scenarios without restarting.
+- **Cheatcodes** — 26 `surfnet_*` RPC methods to manipulate time, accounts, programs, and scenarios without restarting.
 - **Transaction profiling** — compute-unit estimation with before/after account snapshots.
 - **Scenario system** — override protocol state (Pyth, Jupiter, Raydium, etc.) to simulate market conditions.
+- **Embedded SDK** — run a full surfnet in-process from tests via `@solana/surfpool` (TS) or `surfpool-sdk` (Rust).
 - **Infrastructure as Code** — define deployment runbooks in `txtx.yml` and auto-execute on start.
 - **MCP server** — expose surfnet operations as tool calls for AI agents.
 
@@ -24,16 +25,26 @@ Key differences from `solana-test-validator`:
 curl -sL https://run.surfpool.run/ | bash
 ```
 
-Or install from source with Cargo:
+Other methods:
 
 ```bash
+# From source (clone the repo first)
 cargo surfpool-install
+
+# Docker
+docker run --rm -p 8899:8899 -p 8900:8900 -p 18488:18488 surfpool/surfpool
+
+# Snap
+snap install surfpool
 ```
 
-Verify installation:
+> **Warning:** Do NOT run `cargo install surfpool` — the crates.io name is squatted by an unrelated crate. The `txtx/taps` Homebrew tap is stale (pinned to v1.0.0); don't use it either.
+
+Verify and self-update (v1.3.0+, SHA256-verified):
 
 ```bash
 surfpool --version
+surfpool update            # flags: --yes, --version <v>
 ```
 
 ## Agent Usage (NO_DNA)
@@ -50,14 +61,16 @@ See [no-dna.org](https://no-dna.org) for the full standard.
 
 ## Quick Start
 
-### Anchor Project
+### Anchor or Pinocchio Project
 
-Start surfpool in the root of an Anchor workspace. It detects `txtx.yml` (or generates one) and deploys programs automatically:
+Start surfpool in the project root. It detects **Anchor and Pinocchio** projects (Pinocchio detection added in v1.4.0), scaffolds txtx runbooks (program names read from `Anchor.toml`), and deploys programs automatically:
 
 ```bash
-cd my-anchor-project
+cd my-project
 surfpool start
 ```
+
+Note: in Anchor 1.0+, `anchor test` and `anchor localnet` use surfpool as the default test runner.
 
 Use `--watch` to auto-redeploy when `.so` files change in `target/deploy/`:
 
@@ -73,10 +86,11 @@ surfpool start --legacy-anchor-compatibility
 
 ### Mainnet State Cloning
 
-Fork mainnet state with zero config — accounts are fetched lazily when accessed:
+Surfpool **forks mainnet by default** — accounts are fetched lazily when accessed, with zero config:
 
 ```bash
-surfpool start --network mainnet
+surfpool start                    # mainnet fork (default)
+surfpool start --network devnet   # or devnet/testnet
 ```
 
 Use a custom RPC for better rate limits:
@@ -105,6 +119,26 @@ Run as a background daemon (Linux only):
 surfpool start --ci --daemon
 ```
 
+## Embedded SDK (@solana/surfpool)
+
+Since v1.2.0, a full surfnet can be embedded in-process — no shelling out, no fixed ports. Ideal for integration test suites.
+
+- **TypeScript**: npm package `@solana/surfpool` (latest npm release 1.4.0 as of Jul 2026 — npm may lag the CLI version; napi-rs native bindings for macOS x64/arm64, Linux x64 GNU)
+- **Rust**: crate `surfpool-sdk = "1.5.0"` — `Surfnet::builder()` with options such as `BlockProductionMode`
+
+```typescript
+import { Surfnet } from "@solana/surfpool";
+
+const surfnet = Surfnet.start();   // dynamic port, pre-funded payer, cheatcode helpers
+console.log(surfnet.rpcUrl);       // point any RPC client here
+
+// ... run tests against surfnet.rpcUrl ...
+
+surfnet.stop();                    // idempotent graceful shutdown — wire into afterAll()
+```
+
+Pair with `@solana/kit`: `createClient().use(generatedSigner()).use(solanaRpc({ rpcUrl: surfnet.rpcUrl }))`. See [testing.md](../testing.md) for a full vitest example.
+
 ## When to Use Surfpool
 
 | Criterion | surfpool | solana-test-validator | litesvm / bankrun |
@@ -114,7 +148,7 @@ surfpool start --ci --daemon
 | RPC server | Full JSON-RPC on port 8899 | Full JSON-RPC on port 8899 | No RPC server (bankrun has limited BanksClient) |
 | WebSocket support | Yes (port 8900) | Yes | No |
 | Mainnet state | Lazy clone on first access | Manual `--clone` per account | Manual account setup |
-| Account manipulation | 22 cheatcode RPC methods | None (restart + `--account` files) | Direct `set_account()` in-process |
+| Account manipulation | 26 cheatcode RPC methods | None (restart + `--account` files) | Direct `set_account()` in-process |
 | Time control | `surfnet_timeTravel`, `pauseClock`, `resumeClock` | `--slots-per-epoch`, warp via CLI | `warp_to_slot()` in-process |
 | Transaction profiling | Built-in CU profiling with snapshots | None | None |
 | Program hot-reload | `--watch` flag | Restart required | Restart required |
@@ -206,7 +240,16 @@ If in-process tests need to be promoted to integration tests with an RPC endpoin
 surfpool start --ci
 ```
 
-Then point the test client to `http://127.0.0.1:8899` instead of using the in-process bank.
+Then point the test client to `http://127.0.0.1:8899` instead of using the in-process bank. Or skip the daemon entirely and use the embedded SDK (see above).
+
+## Additional Capabilities
+
+- **Jito support** (v1.3–1.4) — atomic bundle execution plus `getBundleStatuses` and `simulateBundle`, for testing bundle-dependent flows locally.
+- **WebSocket subscriptions** — `programSubscribe` (v1.1) and `slotUpdatesSubscribe` (v1.4) on the WS port (8900), in addition to standard subscriptions.
+- **Persistent state** — `--db ./surfnet.sqlite --surfnet-id <id>` persists surfnet state across restarts; combine with `surfnet_exportSnapshot` + `--snapshot` for portable fixtures.
+- **Docker images** — published per release (`surfpool/surfpool`).
+- **Prometheus metrics** — `--metrics-enabled` exposes an endpoint (default `0.0.0.0:9000`).
+- **Studio** — web UI at `localhost:18488` with transaction diffs, CU profiling, and a universal faucet.
 
 ## CLI Reference
 
@@ -473,7 +516,7 @@ For any other MCP-compatible tool, use the stdio transport with command `surfpoo
 | `start_surfnet` | Start a local Solana network. Default returns a shell command; `run_as_subprocess: true` starts in background. |
 | `set_token_accounts` | Set SOL/SPL token balances for accounts on a running surfnet |
 | `start_surfnet_with_token_accounts` | Start network + fund accounts in one call (background process) |
-| `call_surfnet_rpc` | Call any RPC method (standard Solana or `surfnet_*` cheatcodes) on a running surfnet |
+| `call_rpc_method` | Call any RPC method (standard Solana or `surfnet_*` cheatcodes) on a running surfnet. Renamed from `call_surfnet_rpc`. |
 | `create_scenario` | Create a protocol state scenario. Read `override_templates` resource first. |
 | `get_override_templates` | List available override templates |
 
@@ -487,21 +530,23 @@ For any other MCP-compatible tool, use the stdio transport with command `surfpoo
 ### Agent Workflow via MCP
 
 1. **Start surfnet:** Call `start_surfnet` or `start_surfnet_with_token_accounts`
-2. **Set up state:** Use `set_token_accounts` to fund accounts, or `call_surfnet_rpc` with cheatcodes
+2. **Set up state:** Use `set_token_accounts` to fund accounts, or `call_rpc_method` with cheatcodes
 3. **Create scenarios:** Read `override_templates`, then call `create_scenario`
-4. **Execute transactions:** Use `call_surfnet_rpc` with `sendTransaction` or `simulateTransaction`
-5. **Inspect results:** Use `call_surfnet_rpc` with `surfnet_getTransactionProfile` or `surfnet_exportSnapshot`
+4. **Execute transactions:** Use `call_rpc_method` with `sendTransaction` or `simulateTransaction`
+5. **Inspect results:** Use `call_rpc_method` with `surfnet_getTransactionProfile` or `surfnet_exportSnapshot`
 
 ## Cheatcodes Overview
 
-Surfpool exposes 22 `surfnet_*` JSON-RPC methods on the same port as the standard Solana RPC:
+Surfpool exposes 26 `surfnet_*` JSON-RPC methods on the same port as the standard Solana RPC:
 
 ### Account Manipulation
 - `surfnet_setAccount` — set lamports, data, owner, executable flag on any account
 - `surfnet_setTokenAccount` — set SPL token account balances, delegates, state
 - `surfnet_resetAccount` — restore an account to its initial state
 - `surfnet_streamAccount` — mark an account for automatic remote fetching and caching
+- `surfnet_streamAccounts` — register multiple accounts for streaming in one call
 - `surfnet_getStreamedAccounts` — list all streamed accounts
+- `surfnet_offlineAccount` — pin an account locally so it is never re-fetched from the remote
 
 ### Program Management
 - `surfnet_cloneProgramAccount` — copy a program from one address to another
@@ -529,6 +574,10 @@ Surfpool exposes 22 `surfnet_*` JSON-RPC methods on the same port as the standar
 
 ### Scenarios
 - `surfnet_registerScenario` — register a set of account overrides on a timeline
+
+### Meta / Control
+- `surfnet_enableCheatcode` — re-enable previously disabled cheatcodes
+- `surfnet_disableCheatcode` — disable specific cheatcodes (lockout mechanism for hardened environments)
 
 See [cheatcodes.md](cheatcodes.md) for full parameter schemas and JSON-RPC examples.
 

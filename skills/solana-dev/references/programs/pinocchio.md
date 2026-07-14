@@ -17,6 +17,33 @@ Use Pinocchio when you need:
 - **Fine-grained control**: Direct memory access and byte-level operations
 - **no_std environments**: Embedded or constrained contexts
 
+## Crate Versions
+
+Latest published versions (verified 2026-07):
+
+```toml
+[dependencies]
+pinocchio = "0.11"                          # 0.11.2
+pinocchio-system = "0.6"                    # 0.6.1
+pinocchio-token = "0.6"                     # 0.6.0
+pinocchio-token-2022 = "0.3"                # 0.3.1
+pinocchio-associated-token-account = "0.4"  # 0.4.0
+pinocchio-log = "0.5"                       # 0.5.1
+```
+
+Repo: [anza-xyz/pinocchio](https://github.com/anza-xyz/pinocchio)
+
+## Pinocchio 0.11 Migration Notes
+
+0.11.0 introduced **mutable `AccountView` references** — APIs that mutate account state now require `&mut`:
+
+- `assign`, `close`, and `try_borrow_mut` take `&mut AccountView` (previously `&self` with unsafe `borrow_unchecked_mut`-style interior mutation)
+- `process_instruction` receives `&mut [AccountView]` instead of `&[AccountView]`
+- Account resize moved out of `AccountView` into traits behind the `account-resize` feature (or `unsafe-account-resize` for programs that guarantee no prior CPI resize)
+- 0.11.2 added cold error conversion in the SDK
+
+Read-only validation structs can keep holding `&AccountView`; reborrow the slice (`&*accounts`) when passing to them, and route `&mut AccountView` only where mutation happens.
+
 ## Core Architecture
 
 ### Program Structure Validation Checklist
@@ -25,7 +52,7 @@ Before building/deploying, verify lib.rs contains all required components:
 
 - [ ] `entrypoint!(process_instruction)` macro
 - [ ] `pub const ID: Address = Address::new_from_array([...])` with correct program ID
-- [ ] `fn process_instruction(program_id: &Address, accounts: &[AccountView], data: &[u8]) -> ProgramResult`
+- [ ] `fn process_instruction(program_id: &Address, accounts: &mut [AccountView], data: &[u8]) -> ProgramResult`
 - [ ] Instruction routing logic with proper discriminators
 - [ ] `pub mod instructions; pub use instructions::*;`
 
@@ -33,23 +60,23 @@ Before building/deploying, verify lib.rs contains all required components:
 
 ```rust
 use pinocchio::{
-    account::AccountView,
-    address::Address,
     entrypoint,
     error::ProgramError,
-    ProgramResult,
+    AccountView, Address, ProgramResult,
 };
 
 entrypoint!(process_instruction);
 
 fn process_instruction(
     _program_id: &Address,
-    accounts: &[AccountView],
+    accounts: &mut [AccountView],
     instruction_data: &[u8],
 ) -> ProgramResult {
     match instruction_data.split_first() {
-        Some((0, data)) => Deposit::try_from((data, accounts))?.process(),
-        Some((1, _)) => Withdraw::try_from(accounts)?.process(),
+        // Reborrow (&*accounts) for read-only instruction structs;
+        // pass `accounts` directly where mutable access is needed.
+        Some((0, data)) => Deposit::try_from((data, &*accounts))?.process(),
+        Some((1, _)) => Withdraw::try_from(&*accounts)?.process(),
         _ => Err(ProgramError::InvalidInstructionData)
     }
 }
@@ -91,11 +118,9 @@ pub const ID: Address = Address::new_from_array([
 
 ```rust
 use pinocchio::{
-    account::AccountView,
-    address::Address,
     entrypoint,
     error::ProgramError,
-    ProgramResult,
+    AccountView, Address, ProgramResult,
 };
 // Add CPI imports only when needed:
 // cpi::{invoke_signed, Seed, Signer},
@@ -367,7 +392,7 @@ impl<'a> TryFrom<&'a [u8]> for DepositData {
 
 ## Token programs
 
-Use the crates pinocchio-token and pinocchio-token2022
+Use the crates `pinocchio-token` and `pinocchio-token-2022`
 
 ### SPL Token
 
@@ -506,7 +531,7 @@ Use `thiserror` for descriptive errors (supports `no_std`):
 ```rust
 use thiserror::Error;
 use num_derive::FromPrimitive;
-use pinocchio::program_error::ProgramError;
+use pinocchio::error::ProgramError;
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum VaultError {
@@ -530,7 +555,8 @@ impl From<VaultError> for ProgramError {
 Prevent revival attacks by marking closed accounts:
 
 ```rust
-pub fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
+// 0.11+: close() and other mutating APIs require &mut AccountView
+pub fn close(account: &mut AccountView, destination: &mut AccountView) -> ProgramResult {
     // Add lamports
     destination.set_lamports(destination.lamports() + account.lamports())?;
 
@@ -613,7 +639,7 @@ Process multiple operations in a single CPI (saves ~1000 CU per batched operatio
 ```rust
 const IX_HEADER_SIZE: usize = 2; // account_count + data_length
 
-pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramResult {
+pub fn process_batch(mut accounts: &mut [AccountView], mut data: &[u8]) -> ProgramResult {
     loop {
         if data.len() < IX_HEADER_SIZE {
             return Err(ProgramError::InvalidInstructionData);
@@ -627,7 +653,11 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        let (ix_accounts, ix_data) = (&accounts[..account_count], &data[IX_HEADER_SIZE..data_offset]);
+        // Split mutably (0.11+): inner instructions receive &mut [AccountView]
+        // so they can mutate their accounts. mem::take avoids reborrow issues
+        // when advancing the slice across loop iterations.
+        let (ix_accounts, rest) = core::mem::take(&mut accounts).split_at_mut(account_count);
+        let ix_data = &data[IX_HEADER_SIZE..data_offset];
 
         process_inner_instruction(ix_accounts, ix_data)?;
 
@@ -635,7 +665,7 @@ pub fn process_batch(mut accounts: &[AccountView], mut data: &[u8]) -> ProgramRe
             break;
         }
 
-        accounts = &accounts[account_count..];
+        accounts = rest;
         data = &data[data_offset..];
     }
 
@@ -708,7 +738,7 @@ pub fn emit_event<E: EventDiscriminator + EventSerialize>(
     data.extend(event.serialize());
 
     // CPI to self with event_authority as signer
-    pinocchio::program::invoke(
+    pinocchio::cpi::invoke(
         &Instruction { program_id: &crate::ID, accounts: &[...], data: &data },
         &[event_authority, program],
     )
@@ -741,6 +771,8 @@ pub mod tests;
 ```
 
 See [testing.md](../testing.md) for detailed testing patterns with Mollusk and LiteSVM.
+
+For local network testing and deployment, Surfpool v1.4.0+ auto-detects Pinocchio projects — `surfpool start` scaffolds deployment runbooks for them.
 
 ## Build & Deployment
 

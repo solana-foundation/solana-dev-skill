@@ -53,14 +53,14 @@ function loadSkillBody(path: string): string {
 }
 
 const skills: SkillEntry[] = [
-  loadSkillDescription(resolve(__dirname, "../skill/SKILL.md")),
+  loadSkillDescription(resolve(__dirname, "../skills/solana-dev/SKILL.md")),
   { name: "remotion-best-practices", description: "Best practices for Remotion - Video creation in React" },
   { name: "find-skills", description: "Helps users discover and install agent skills" },
   { name: "claude-api", description: "Build apps with the Claude API or Anthropic SDK. TRIGGER when: code imports anthropic/@anthropic-ai/sdk/claude_agent_sdk, or user asks to use Claude API, Anthropic SDKs, or Agent SDK." },
   { name: "simplify", description: "Review changed code for reuse, quality, and efficiency, then fix any issues found." },
 ].filter(Boolean) as SkillEntry[];
 
-const skillBody = loadSkillBody(resolve(__dirname, "../skill/SKILL.md"));
+const skillBody = loadSkillBody(resolve(__dirname, "../skills/solana-dev/SKILL.md"));
 
 // ── Types ─────────────────────────────────────────────────────────────
 interface TestCase {

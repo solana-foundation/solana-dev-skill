@@ -9,7 +9,8 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 
 | Anchor Version | Release Date | Solana CLI | Rust Version | Platform Tools | GLIBC Req | Node.js | Key Notes |
 |---|---|---|---|---|---|---|---|
-| **1.0.x** | — | 3.x | 1.79–1.85+ (stable) | v1.52 | ≥2.39 | ≥17 | TS pkg → `@anchor-lang/core`; `anchor test` defaults to surfpool; IDL in Program Metadata; no `solana` CLI shell-out; all `solana-*` deps must be `^3`; `solana-program` removed as project dep; `solana-signer` replaces `solana-sdk` for signing |
+| **1.1.x** (latest: 1.1.2) | Jun 2026 | 3.1.x (CI-tested: 3.1.10) | MSRV 1.89 | v1.52+ | ≥2.39 | ≥20.18 | anchor-syn on syn 2.0; versioned tx in anchor-client; `verifiedBuild` (OtterSec verify.osec.io); multiple named scripts in Anchor.toml; `anchor idl fetch-historical`; 1.1.2 tightens inter-crate `anchor-*` pins |
+| **1.0.x** | Apr 2026 | 3.x | 1.79–1.85+ (stable) | v1.52 | ≥2.39 | ≥17 | TS pkg → `@anchor-lang/core`; `anchor test` defaults to surfpool; LiteSVM test template default on `anchor init`; `--install-agent-skills` flag; IDL in Program Metadata; no `solana` CLI shell-out; all `solana-*` deps must be `^3`; `solana-program` removed as project dep; `solana-signer` replaces `solana-sdk` for signing; `Migration<'info, From, To>` account type; duplicate mutable accounts disallowed (new `dup` constraint) |
 | **0.32.x** | Oct 2025 | 2.1.x+ | 1.79–1.85+ (stable) | v1.50+ | ≥2.39 | ≥17 | Replaces `solana-program` with smaller crates; IDL builds on stable Rust; removes Solang |
 | **0.31.1** | Apr 2025 | 2.0.x–2.1.x | 1.79–1.83 | v1.47+ | ≥2.39 ⚠️ | ≥17 | New Docker image `solanafoundation/anchor`; published under solana-foundation org. **Tested: binary requires GLIBC 2.39, not 2.38** |
 | **0.31.0** | Mar 2025 | 2.0.x–2.1.x | 1.79–1.83 | v1.47+ | ≥2.39 ⚠️ | ≥17 | Solana v2 upgrade; dynamic discriminators; `LazyAccount`; `declare_program!` improvements. **Pre-built binary needs GLIBC 2.39** |
@@ -21,7 +22,8 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 
 | Solana CLI | Agave Version | Era | solana-program Crate | Platform Tools | Status |
 |---|---|---|---|---|---|
-| **3.1.x** | v3.1.x | Jan 2026 | N/A (validator only) | v1.52 | Edge/Beta |
+| **4.1.x** | v4.1.x (latest stable: 4.1.2, Jul 2026) | Jul 2026 | N/A (validator only) | v1.52+ | Stable |
+| **3.1.x** | v3.1.x | Jan 2026 | N/A (validator only) | v1.52 | Stable — CI-tested pairing for Anchor 1.1.x (3.1.10) |
 | **3.0.x** | v3.0.x | Late 2025 | N/A (validator only) | v1.52 | Stable (mainnet) |
 | **2.1.x** | v2.1.x | Mid 2025 | 2.x | v1.47–v1.51 | Stable |
 | **2.0.x** | v2.0.x | Early 2025 | 2.x | v1.44–v1.47 | Legacy |
@@ -29,8 +31,11 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 | **1.17.x** | N/A | 2023 | 1.17.x | v1.37–v1.41 | Deprecated |
 | **1.16.x** | N/A | 2023 | 1.16.x | v1.35–v1.37 | Deprecated |
 
-### Important: Solana CLI v3.x
+### Important: Solana CLI v3.x+
 As of Agave v3.0.0, Anza **no longer publishes the `agave-validator` binary**. Operators must build from source. The CLI tools (for program development) remain available via `agave-install` or the install script.
+
+### Agave 4.x vs SDK crate versions (Jul 2026)
+Agave validator releases (4.x) are versioned **independently** from the SDK crates. `solana-program` is at 4.0.0 and `solana-sdk` at 4.0.1 (Feb 2026), but **Anchor 1.1.x still pins the 3.x crate line** (`solana-program = "3.0.0"` internally) and its CI installs Solana CLI 3.1.10. For Anchor projects, stay on `solana-*` `^3` crates until Anchor moves; for non-Anchor native programs you may use the 4.x crates with matching tooling.
 
 ## Platform Tools → Rust Toolchain Mapping
 
@@ -81,6 +86,7 @@ anchor: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
 
 | Anchor | anchor-lang Crate | Project-level solana-* | Notes |
 |---|---|---|---|
+| **1.1.x** | 1.1.x (MSRV 1.89) | `^3` (granular crates) | Same rules as 1.0.x; 1.1.2 tightens `anchor-*` inter-crate pins — keep all `anchor-*` crates on the exact same version |
 | **1.0.x** | 1.0.x | `^3` (granular crates) | `solana-program` removed from project deps; use `solana-signer` instead of `solana-sdk` for signing; all `solana-*` must be `^3` |
 | **0.32.x** | 0.32.x | `2` (still `solana-program` or granular v2) | anchor-lang internals use granular crates; `solana-program` still valid in user Cargo.toml |
 | **0.31.x** | 0.31.x | 2.x | Upgraded to Solana v2 crate ecosystem |
@@ -125,6 +131,7 @@ anchor-lang = "0.32.1"
 
 | Anchor | anchor-spl | spl-token | spl-token-2022 | spl-associated-token-account |
 |---|---|---|---|---|
+| **1.1.x** | 1.1.x | Latest compatible | Latest compatible | Latest compatible |
 | **1.0.x** | 1.0.x | Latest compatible | Latest compatible | Latest compatible |
 | **0.32.x** | 0.32.x | Latest compatible | Latest compatible | Latest compatible |
 | **0.31.x** | 0.31.x | 6.x | 5.x | 4.x |
@@ -135,6 +142,7 @@ anchor-lang = "0.32.1"
 
 | Anchor | TS Package | Node.js | TypeScript | Notes |
 |---|---|---|---|---|
+| **1.1.x** | `@anchor-lang/core ^1.1.0` | ≥20.18 | 5.x | `engines.node >= 20.18`; versioned transaction support |
 | **1.0.x** | `@anchor-lang/core ^1.0.0` | ≥17 | 5.x | Renamed from `@coral-xyz/anchor`. IDL types now at root of `@anchor-lang/core` (was `@coral-xyz/anchor/dist/cjs/idl`) |
 | **0.32.x** | `@coral-xyz/anchor ^0.32.x` | ≥17 | 5.x | |
 | **0.31.x** | `@coral-xyz/anchor ^0.31.x` | ≥17 | 5.x | |
@@ -167,11 +175,28 @@ IDL management now uses `anchor idl init` / `anchor idl upgrade` (CLI) or `@sola
 
 ## Known Working Combinations (Tested)
 
-### 🟢 Anchor v1 (Recommended for new projects)
+### 🟢 Anchor 1.1.x (Recommended for new projects — Jul 2026)
 ```
-Anchor CLI: 1.0.0
-anchor-lang: 1.0.0
-anchor-spl: 1.0.0
+Anchor CLI: 1.1.2
+anchor-lang: 1.1.2
+anchor-spl: 1.1.2
+solana-* crates: ^3
+litesvm (dev): 0.14.0  (Agave 4.1-based; check anchor-litesvm for a matching release)
+mollusk-svm (dev): 0.14.0
+TS: @anchor-lang/core ^1.1.0
+Solana CLI: 3.1.10 (Anchor CI-tested pairing)
+Platform Tools: v1.52+
+Rust: ≥1.89 (anchor-lang MSRV)
+Node.js: ≥20.18 (22.x LTS recommended)
+OS: Ubuntu 24.04+ (GLIBC ≥2.39) or macOS 14+
+Test runner: surfpool (default in anchor test)
+```
+
+### 🟢 Anchor 1.0.x (Existing v1 projects)
+```
+Anchor CLI: 1.0.3
+anchor-lang: 1.0.3
+anchor-spl: 1.0.3
 solana-* crates: ^3
 litesvm (dev): 0.8.2  (or 0.9.1 if solana-hash 4.0 / solana-vote-interface 5.0)
 anchor-litesvm (dev): 0.3
@@ -184,19 +209,10 @@ OS: Ubuntu 24.04+ (GLIBC ≥2.39) or macOS 14+
 Test runner: surfpool (default in anchor test)
 ```
 
-### 🟢 Modern (Recommended for existing 0.32 projects — Jan 2026)
-```
-Anchor CLI: 0.31.1
-Solana CLI: 2.1.7 (stable)
-Rust: 1.83.0
-Platform Tools: v1.50
-Node.js: 20.x LTS
-OS: Ubuntu 24.04 or macOS 14+
-```
-
-### 🟢 Latest 0.32.x (Cutting edge pre-v1)
+### 🟢 Anchor 0.32.x (Recommended for existing 0.32 projects staying pre-v1)
 ```
 Anchor CLI: 0.32.1
+anchor-lang: 0.32.1 (CLI and crate versions must match)
 Solana CLI: 2.1.7+
 Rust: 1.84.0+
 Platform Tools: v1.52
@@ -242,14 +258,15 @@ Use the row that matches your workspace's resolved `solana-*` granular crate ver
 
 | Tool | npm Package | GLIBC Req | Node.js | Notes |
 |---|---|---|---|---|
-| **LiteSVM 0.5.0** | `litesvm` | ≥2.38 ⚠️ | ≥18 | **Tested: native binary (`litesvm.linux-x64-gnu.node`) fails on Debian 12 (GLIBC 2.36) with `undefined symbol: __isoc23_strtol`**. Works on Ubuntu 24.04+, macOS. |
+| **LiteSVM 1.3.0** (current, Jul 2026) | `litesvm` | ≥2.38 | ≥18 | Agave 4.1-based; pairs with `@solana/kit-plugin-litesvm` 0.13 |
+| **LiteSVM 0.5.0** | `litesvm` | ≥2.38 ⚠️ | ≥18 | **Tested: native binary (`litesvm.linux-x64-gnu.node`) fails on Debian 12 (GLIBC 2.36) with `undefined symbol: __isoc23_strtol`**. Works on Ubuntu 24.04+, macOS. Same GLIBC floor expected for 1.x binaries. |
 | **LiteSVM 0.3.x** | `litesvm` | ≥2.31 | ≥16 | Older API, may work on older systems |
 | **solana-bankrun** | `solana-bankrun` | ≥2.28 | ≥16 | Legacy — being replaced by LiteSVM |
 | **anchor-bankrun** | `anchor-bankrun` | ≥2.28 | ≥16 | Legacy Anchor wrapper for bankrun |
 | **anchor-litesvm** | `anchor-litesvm` | Same as litesvm | ≥18 | Anchor wrapper for LiteSVM |
 
 ### LiteSVM on Older Systems
-If `litesvm` 0.5.0 fails with GLIBC errors:
+If the `litesvm` npm native binary fails with GLIBC errors (verified on 0.5.0):
 1. **Upgrade OS** to Ubuntu 24.04+ (recommended)
 2. **Use Docker**: `FROM ubuntu:24.04` base image
 3. **Fall back to `solana-bankrun`** temporarily
