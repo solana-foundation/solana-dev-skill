@@ -372,6 +372,7 @@ NO_DNA=1 surfpool start --rpc-url https://my-rpc-provider.com
 - **Live accounts**: `surfnet_streamAccount` re-fetches an account from the remote on every access (pass `{"includeOwnedAccounts": true}` to cascade); `surfnet_streamAccounts` registers several at once; `surfnet_offlineAccount` pins an account so it is never re-fetched.
 - **Oracle/protocol scenarios**: `surfnet_registerScenario` schedules account overrides on a slot timeline using built-in templates (Pyth, Switchboard, Raydium, Kamino, Drift, ...). Example: set BTC/USD to $67,500 with template `pyth_btcusd` and values `{"price_message.price_value": 67500}`. Use `fetchBeforeUse` on an override to refresh from the live feed before applying deltas.
 - **Snapshots**: `surfnet_exportSnapshot` (with sysvar/feature-gate filters since v1.4.0) captures forked state to JSON; reload deterministically with `surfpool start --snapshot ./snap.json`.
+- **Snapshot → offline unit-test fixtures**: with `{"scope": {"preTransaction": "<signature>"}}`, `surfnet_exportSnapshot` returns the state of every account a transaction touched *as it was before execution*. Run the flow once against a fork, export the pre-state, and load those accounts into LiteSVM/Mollusk to replay the instruction as a deterministic, offline unit test — see [surfpool/cheatcodes.md](surfpool/cheatcodes.md#surfnet_exportsnapshot).
 
 ### Anchor Projects
 
