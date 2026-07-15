@@ -34,6 +34,77 @@ Consider Kora when you need:
 
 Kora ships a Kit plugin (`koraPlugin` / `createKitKoraClient` from `@solana/kora`).
 
+## x402 (agent-to-agent micropayments)
+
+Use x402 when your agent needs to pay another agent, API, or service for compute, data, or inference — all settled on Solana in USDC, gasless.
+
+x402 is a payment protocol for the agent economy: an HTTP 402 flow where a client agent responds to a payment challenge by authorizing a USDC transfer to the server's wallet via the x402 facilitator.
+
+**Solana x402 setup:**
+
+```
+npm install @x402/evm @x402/core @x402/fetch
+```
+
+Note: x402's EVM scheme covers Solana VM (SVM) via `solana:` address syntax. The receiver address is a Solana wallet.
+
+**Server-side (accepting x402 payments):**
+
+```typescript
+import { paymentMiddleware } from "@x402/express";
+import { ExactEvmScheme } from "@x402/evm/exact/server";
+
+const scheme = new ExactEvmScheme({
+  receiverAddress: "SOLANA_WALLET_ADDRESS",
+  facilitatorUrl: "https://x402.org/facilitator",
+});
+
+app.use(paymentMiddleware({
+  schemes: [scheme],
+  routes: {
+    "POST /protected-route": {
+      price: "$0.01",
+      network: "eip155:792703813",     // Solana CAIP-2 chain ID
+      config: { description: "My paid API" },
+    },
+  },
+}));
+```
+
+**Client-side (paying via x402):**
+
+```typescript
+import { wrapFetchWithPayment } from "@x402/fetch";
+import { privateKeyToAccount } from "viem/accounts";
+
+const account = privateKeyToAccount(process.env.PRIVATE_KEY!);
+const fetchWithPayment = wrapFetchWithPayment(fetch, account);
+
+const res = await fetchWithPayment("https://api.example.com/protected-route", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ /* payload */ }),
+});
+```
+
+The `wrapFetchWithPayment` wrapper:
+1. Sends the initial request without payment
+2. Receives a 402 Payment Required challenge
+3. Signs a USDC transfer authorization
+4. Retries with the signed X-PAYMENT header
+5. Returns the final response with an X-PAYMENT-RESPONSE settlement header
+
+**Discovery endpoints (server advertises capabilities):**
+
+```
+GET /.well-known/x402 → { version, resources, resourceDetails, facilitator, instructions }
+```
+
+**Key references:**
+- [x402.org](https://x402.org/) — protocol spec
+- `@x402/core`, `@x402/evm`, `@x402/fetch`, `@x402/express` — npm packages
+- [x402scan.com](https://www.x402scan.com/) — public x402 service registry
+
 ## UX and security checklist for payments
 - Always show recipient + amount + token clearly before signing.
 - Protect against replay (use unique references / memoing where appropriate).
