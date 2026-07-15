@@ -43,56 +43,98 @@ x402 is a payment protocol for the agent economy: an HTTP 402 flow where a clien
 **Solana x402 setup:**
 
 ```
-npm install @x402/evm @x402/core @x402/fetch
+npm install @x402/core @x402/svm @x402/express @solana/kit
 ```
 
-Note: x402's EVM scheme covers Solana VM (SVM) via `solana:` address syntax. The receiver address is a Solana wallet.
+Note: `@x402/core` provides the transport-agnostic client and server components. `@x402/svm` provides the Solana VM (SVM) payment scheme implementation for USDC settlement on Solana mainnet.
 
 **Server-side (accepting x402 payments):**
 
 ```typescript
+import { x402ResourceServer, HTTPFacilitatorClient } from "@x402/core/server";
 import { paymentMiddleware } from "@x402/express";
-import { ExactEvmScheme } from "@x402/evm/exact/server";
+import { ExactSvmScheme } from "@x402/svm/exact/server";
 
-const scheme = new ExactEvmScheme({
-  receiverAddress: "SOLANA_WALLET_ADDRESS",
-  facilitatorUrl: "https://x402.org/facilitator",
+// Connect to the x402 facilitator for payment processing
+const facilitatorClient = new HTTPFacilitatorClient({
+  url: "https://x402.org/facilitator",
 });
 
-app.use(paymentMiddleware({
-  schemes: [scheme],
-  routes: {
-    "POST /protected-route": {
+// Create resource server with SVM payment scheme registered
+const server = new x402ResourceServer(facilitatorClient)
+  .register("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", new ExactSvmScheme());
+
+await server.initialize();
+
+// Define protected routes and their payment requirements
+const routes = {
+  "POST /protected-route": {
+    accepts: {
+      scheme: "exact",
+      network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",   // Solana mainnet CAIP-2
+      payTo: "SOLANA_WALLET_ADDRESS",
       price: "$0.01",
-      network: "eip155:792703813",     // Solana CAIP-2 chain ID
-      config: { description: "My paid API" },
     },
+    description: "My paid API endpoint",
+    mimeType: "application/json",
   },
-}));
+};
+
+// Attach x402 middleware to Express
+app.use(paymentMiddleware(routes, server));
 ```
 
 **Client-side (paying via x402):**
 
 ```typescript
-import { wrapFetchWithPayment } from "@x402/fetch";
-import { privateKeyToAccount } from "viem/accounts";
+import { x402Client } from "@x402/core/client";
+import { x402HTTPClient } from "@x402/core/http";
+import { ExactSvmScheme } from "@x402/svm/exact/client";
+import { createKeyPairSignerFromBytes } from "@solana/kit";
 
-const account = privateKeyToAccount(process.env.PRIVATE_KEY!);
-const fetchWithPayment = wrapFetchWithPayment(fetch, account);
+// Create SVM signer from private key bytes
+const privateKeyBytes = hexToBytes(process.env.SOLANA_PRIVATE_KEY!);
+const signer = await createKeyPairSignerFromBytes(privateKeyBytes);
 
-const res = await fetchWithPayment("https://api.example.com/protected-route", {
+// Create core client and register the SVM scheme
+const coreClient = new x402Client()
+  .register("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", new ExactSvmScheme(signer));
+
+// Wrap with HTTP client for header encoding/decoding
+const client = new x402HTTPClient(coreClient);
+
+// Make a request
+const response = await fetch("https://api.example.com/protected-route", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ /* payload */ }),
 });
-```
 
-The `wrapFetchWithPayment` wrapper:
-1. Sends the initial request without payment
-2. Receives a 402 Payment Required challenge
-3. Signs a USDC transfer authorization
-4. Retries with the signed X-PAYMENT header
-5. Returns the final response with an X-PAYMENT-RESPONSE settlement header
+// Handle 402 Payment Required — create and attach payment
+if (response.status === 402) {
+  const paymentRequired = client.getPaymentRequiredResponse(
+    (name) => response.headers.get(name),
+    await response.json()
+  );
+
+  const paymentPayload = await client.createPaymentPayload(paymentRequired);
+
+  const paidResponse = await fetch("https://api.example.com/protected-route", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...client.encodePaymentSignatureHeader(paymentPayload),
+    },
+    body: JSON.stringify({ /* payload */ }),
+  });
+
+  // Verify settlement
+  const settlement = client.getPaymentSettleResponse(
+    (name) => paidResponse.headers.get(name)
+  );
+  console.log("Transaction:", settlement.transaction);
+}
+```
 
 **Discovery endpoints (server advertises capabilities):**
 
@@ -102,7 +144,7 @@ GET /.well-known/x402 → { version, resources, resourceDetails, facilitator, in
 
 **Key references:**
 - [x402.org](https://x402.org/) — protocol spec
-- `@x402/core`, `@x402/evm`, `@x402/fetch`, `@x402/express` — npm packages
+- `@x402/core`, `@x402/svm`, `@x402/express` — npm packages
 - [x402scan.com](https://www.x402scan.com/) — public x402 service registry
 
 ## UX and security checklist for payments
