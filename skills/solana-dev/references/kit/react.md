@@ -62,7 +62,7 @@ For caching, revalidation, and request dedup, prefer the framework adapters: `@s
 
 ## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
 
-Requires the `walletSigner` (or `walletWithoutSigner`) plugin on the client. Every hook takes the wallet-enabled `client` as its first argument, keeping the app fully typed end-to-end.
+Requires `@solana/kit-plugin-wallet` 0.14+ and the `walletSigner` (or `walletWithoutSigner`) plugin on the client. Every hook takes the wallet-enabled `client` as its first argument, keeping the app fully typed end-to-end.
 
 **State hooks:**
 
