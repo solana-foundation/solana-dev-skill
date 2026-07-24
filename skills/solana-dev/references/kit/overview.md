@@ -16,7 +16,7 @@ npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
 
 For LiteSVM testing add `@solana/kit-plugin-litesvm`. For browser wallet connection add `@solana/kit-plugin-wallet`. For Codama-generated program clients add the relevant `@solana-program/*` package(s).
 
-Minimum version: Solana Kit v7 (plugin packages 0.13+). Note: some `@solana-program/*` packages still declare `@solana/kit ^6.x` peer ranges — install with your package manager's peer-dep override if needed until they republish against Kit 7.
+Minimum version: Solana Kit v7 (plugin packages 0.13+).
 
 ## Quick Start
 

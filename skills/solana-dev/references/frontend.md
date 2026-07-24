@@ -60,7 +60,7 @@ Then wrap `app/layout.tsx` with `<Providers>`.
 
 ## Wallet connection
 
-Use the React hooks from `@solana/kit-plugin-wallet/react` — state hooks (`useWallets`, `useConnectedWallet`, `useWalletStatus`, `useIsWalletReady`) and action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`, `useSelectAccount`), plus a `WalletReadyGate` component for the discovery warm-up:
+Use the React hooks from `@solana/kit-plugin-wallet/react` — state hooks (`useWallets`, `useConnectedWallet`, `useWalletStatus`, `useIsWalletReady`) and action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`, `useSelectAccount`), plus a `WalletReadyGate` component for the discovery warm-up. Every hook takes the wallet-enabled `client` as its first argument:
 
 ```tsx
 'use client';
@@ -72,12 +72,13 @@ import {
   useWallets,
   WalletReadyGate,
 } from '@solana/kit-plugin-wallet/react';
+import type { AppClient } from './providers';
 
-function WalletButton() {
-  const wallets = useWallets();
-  const connected = useConnectedWallet();
-  const { dispatch: connect } = useConnect();
-  const { dispatch: disconnect } = useDisconnect();
+function WalletButton({ client }: { client: AppClient }) {
+  const wallets = useWallets(client);
+  const connected = useConnectedWallet(client);
+  const { dispatch: connect } = useConnect(client);
+  const { dispatch: disconnect } = useDisconnect(client);
 
   if (!connected) {
     return wallets.map((wallet) => (
@@ -95,14 +96,12 @@ function WalletButton() {
 }
 
 // Hide wallet UI until Wallet Standard discovery settles
-export const Wallet = () => (
-  <WalletReadyGate fallback={<p>Loading wallets…</p>}>
-    <WalletButton />
+export const Wallet = ({ client }: { client: AppClient }) => (
+  <WalletReadyGate client={client} fallback={<p>Loading wallets…</p>}>
+    <WalletButton client={client} />
   </WalletReadyGate>
 );
 ```
-
-> **API heads-up:** these hooks are moving to take the client as their first parameter — `useConnect(client)`, `useWalletStatus(client)`, `<WalletReadyGate client={client}>` ([kit-plugins#326](https://github.com/anza-xyz/kit-plugins/pull/326)) — for end-to-end typed clients. Check the [kit-plugin-wallet README](https://github.com/anza-xyz/kit-plugins/tree/main/packages/kit-plugin-wallet#react-hooks) for the current signatures.
 
 Outside React (or for imperative flows), the same state is on the client: `client.wallet.getState()` returns `{ wallets, connected, status }` and `client.wallet.connect(wallet)` / `disconnect()` / `selectAccount(account)` drive the connection.
 

@@ -273,8 +273,6 @@ await client.token.instructions
 | `@solana-program/compute-budget` | `computeBudgetProgram()` | `client.computeBudget` (CU limits, priority fees) |
 | `@solana-program/memo` | `memoProgram()` | `client.memo` |
 
-> Peer-dep note: some `@solana-program/*` releases still declare `@solana/kit ^6.x` peers while Kit is at 7.x. They work with Kit 7 — override the peer range if your package manager complains, and check for republished versions.
-
 ### Example Implementations
 
 | Package | Exports | Purpose | Code Example |

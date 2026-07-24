@@ -62,28 +62,28 @@ For caching, revalidation, and request dedup, prefer the framework adapters: `@s
 
 ## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
 
-Requires the `walletSigner` (or `walletWithoutSigner`) plugin on the client.
+Requires the `walletSigner` (or `walletWithoutSigner`) plugin on the client. Every hook takes the wallet-enabled `client` as its first argument, keeping the app fully typed end-to-end.
 
 **State hooks:**
 
 | Hook | Returns |
 |------|---------|
-| `useWallets()` | Discovered Wallet Standard wallets for the configured chain |
-| `useConnectedWallet()` | Active connection (`{ account, signer, wallet }`) or `null` |
-| `useWalletStatus()` | `'pending' \| 'disconnected' \| 'connecting' \| 'connected' \| 'disconnecting' \| 'reconnecting'` |
-| `useIsWalletReady()` | `false` during discovery warm-up, then `true` |
+| `useWallets(client)` | Discovered Wallet Standard wallets for the configured chain |
+| `useConnectedWallet(client)` | Active connection (`{ account, signer, wallet }`) or `null` |
+| `useWalletStatus(client)` | `'pending' \| 'disconnected' \| 'connecting' \| 'connected' \| 'disconnecting' \| 'reconnecting'` |
+| `useIsWalletReady(client)` | `false` during discovery warm-up, then `true` |
 
 **Action hooks** (built on `useAction` — expose `dispatch` + pending/error state):
 
 | Hook | Wraps |
 |------|-------|
-| `useConnect()` | `client.wallet.connect(wallet)` |
-| `useDisconnect()` | `client.wallet.disconnect()` |
-| `useSignIn()` | Sign-In-With-Solana (`client.wallet.signIn(wallet, input)`) |
-| `useSignMessage()` | `client.wallet.signMessage(message)` |
-| `useSelectAccount()` | Switch account within the authorized wallet |
+| `useConnect(client)` | `client.wallet.connect(wallet)` |
+| `useDisconnect(client)` | `client.wallet.disconnect()` |
+| `useSignIn(client)` | Sign-In-With-Solana (`client.wallet.signIn(wallet, input)`) |
+| `useSignMessage(client)` | `client.wallet.signMessage(message)` |
+| `useSelectAccount(client)` | Switch account within the authorized wallet |
 
-**Component:** `WalletReadyGate` — renders `fallback` until wallet discovery settles.
+**Component:** `WalletReadyGate` — takes `client` as a prop, renders `fallback` until wallet discovery settles.
 
 ```tsx
 import {
@@ -92,11 +92,12 @@ import {
   useWallets,
   WalletReadyGate,
 } from '@solana/kit-plugin-wallet/react';
+import type { ClientWithWallet } from '@solana/kit-plugin-wallet';
 
-function WalletPicker() {
-  const wallets = useWallets();
-  const connected = useConnectedWallet();
-  const { dispatch: connect } = useConnect();
+function WalletPicker({ client }: { client: ClientWithWallet }) {
+  const wallets = useWallets(client);
+  const connected = useConnectedWallet(client);
+  const { dispatch: connect } = useConnect(client);
 
   if (connected) return <p>{connected.account.address}</p>;
   return wallets.map((w) => (
@@ -104,8 +105,6 @@ function WalletPicker() {
   ));
 }
 ```
-
-> **API heads-up:** these hooks are moving to take the client as their first parameter — `useConnect(client)`, `useWalletStatus(client)`, `<WalletReadyGate client={client}>` ([kit-plugins#326](https://github.com/anza-xyz/kit-plugins/pull/326)). New Kit hooks will follow the same `(client, input)` pattern (e.g. an upcoming `useSendTransaction(client, input)`), keeping the app fully typed end-to-end. Check the [kit-plugin-wallet README](https://github.com/anza-xyz/kit-plugins/tree/main/packages/kit-plugin-wallet#react-hooks) for current signatures.
 
 ## Chain Identifiers
 
