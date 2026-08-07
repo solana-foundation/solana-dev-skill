@@ -15,6 +15,7 @@ description: Build React and Next.js Solana apps with a Kit plugin client, Walle
 - `@solana/kit` (v7+)
 - `@solana/kit-plugin-rpc`, `@solana/kit-plugin-wallet` (wallet React hooks ship in `@solana/kit-plugin-wallet/react`)
 - `@solana/react` (v7+ — Kit client bindings: `ClientProvider`, `useClient`, data hooks)
+- `swr` (peer dep of `@solana/react/swr`) or `@tanstack/react-query` (peer dep of `@solana/react/query`) — pick whichever your app already uses
 - `@solana-program/system`, `@solana-program/token`, `@your-program/codama-client` etc. (only what you need)
 
 `solanaRpc` already bundles transaction planning/sending — you do not need `@solana/kit-plugin-instruction-plan` in apps.
@@ -60,7 +61,7 @@ Then wrap `app/layout.tsx` with `<Providers>`.
 
 ## Wallet connection
 
-Use the React hooks from `@solana/kit-plugin-wallet/react` — state hooks (`useWallets`, `useConnectedWallet`, `useWalletStatus`, `useIsWalletReady`) and action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`, `useSelectAccount`), plus a `WalletReadyGate` component for the discovery warm-up. Every hook takes the wallet-enabled `client` as its first argument:
+Use the React hooks from `@solana/kit-plugin-wallet/react` — state hooks (`useWallets`, `useConnectedWallet`, `useWalletStatus`, `useIsWalletReady`), action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`), `useSelectAccount` (synchronous — returns the bound function, not an action), plus a `WalletReadyGate` component for the discovery warm-up. Every hook takes the wallet-enabled `client` as its first argument:
 
 ```tsx
 'use client';
@@ -107,34 +108,111 @@ Outside React (or for imperative flows), the same state is on the client: `clien
 
 ## Sending transactions
 
-With the wallet plugin installed, `client.sendTransaction` plans, asks the wallet to sign, and sends:
+With the wallet plugin installed, `client.sendTransaction` plans, asks the wallet to sign, and sends. Wrap it in `useAction` from `@solana/react` so pending/error state, abort-on-resend, and stale-while-revalidate come for free instead of hand-rolled `useState`:
 
 ```tsx
-import { useClient } from '@solana/react';
+'use client';
+
+import { address, sol, solToLamports } from '@solana/kit';
 import { getTransferSolInstruction } from '@solana-program/system';
-import { address, sol } from '@solana/kit';
+import { useAction, useClient } from '@solana/react';
 import type { AppClient } from '@/app/providers';
 
-function useSendTip() {
+function TipButton({ to }: { to: string }) {
   const client = useClient<AppClient>();
-  return async (to: string) => {
-    const ix = getTransferSolInstruction({
-      source: client.payer,
-      destination: address(to),
-      amount: sol('0.01'),
-    });
-    return await client.sendTransaction([ix]);
+
+  const { dispatch, isRunning, error, data: signature } = useAction(
+    async (signal: AbortSignal, recipient: string) => {
+      const ix = getTransferSolInstruction({
+        source: client.payer,
+        destination: address(recipient),
+        // `sol()` returns a fixed-point value; instructions take Lamports
+        amount: solToLamports(sol('0.01')),
+      });
+      // Forward the signal so a superseded send is actually cancelled
+      const result = await client.sendTransaction([ix], { abortSignal: signal });
+      return result.context.signature;
+    },
+  );
+
+  return (
+    <>
+      <button disabled={isRunning} onClick={() => dispatch(to)}>
+        {isRunning ? 'Sending…' : error ? 'Retry' : 'Tip 0.01 SOL'}
+      </button>
+      {signature ? <a href={`https://explorer.solana.com/tx/${signature}`}>View</a> : null}
+    </>
+  );
+}
+```
+
+Use `dispatch` in event handlers — it returns `void` and never throws, so it can't produce an unhandled rejection. Full hook semantics are in [kit/react.md](kit/react.md#useaction).
+
+## Data fetching and subscriptions
+
+`@solana/react` ships data hooks — `useRequest` (one-shot reads), `useSubscription` (websocket streams), `useTrackedData` (a one-shot read seeded into a subscription, slot-deduped), and `useAction` — plus adapters for SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`). Prefer these over hand-rolled polling, and always call `useClient<AppClient>()` with your exported client type. See [kit/react.md](kit/react.md#data-hooks) for the per-hook return shapes and gotchas.
+
+**Balance and other live account data: use `useTrackedDataSWR`.** It fires the initial RPC fetch and the account subscription together, slot-dedupes them so an out-of-order arrival never regresses the displayed value, and routes the result through SWR's cache so every component on the same key shares one connection. A Next.js-shaped hook:
+
+```tsx
+'use client';
+
+import { useMemo } from 'react';
+import { type Address, type Lamports } from '@solana/kit';
+import { useClient } from '@solana/react';
+import { useTrackedDataSWR } from '@solana/react/swr';
+import type { AppClient } from '@/app/providers';
+
+export function useBalance(accountAddress?: Address) {
+  const { rpc, rpcSubscriptions } = useClient<AppClient>();
+
+  // Passing `null` when there is no address is what gates the hook off —
+  // it must be memoized, since spec identity drives teardown and re-run.
+  const spec = useMemo(
+    () =>
+      accountAddress
+        ? {
+            initialValueSource: rpc.getBalance(accountAddress, { commitment: 'confirmed' }),
+            initialValueMapper: (lamports: Lamports) => lamports,
+            streamSource: rpcSubscriptions.accountNotifications(accountAddress, {
+              commitment: 'confirmed',
+            }),
+            streamValueMapper: ({ lamports }: { lamports: Lamports }) => lamports,
+          }
+        : null,
+    [rpc, rpcSubscriptions, accountAddress],
+  );
+
+  const { data, error } = useTrackedDataSWR(
+    accountAddress ? ['balance', accountAddress] : null,
+    spec,
+  );
+
+  return {
+    lamports: data?.value ?? null,
+    isLoading: accountAddress != null && data == null && error == null,
+    error,
   };
 }
 ```
 
-Kit will ship dedicated hooks for this shortly (e.g. `useSendTransaction(client, input)` wrapping `useAction` + `client.sendTransaction`) — prefer those once released.
+**Multi-cluster apps:** include the cluster in the cache key, and derive it from the same source that built the client — the client is typically rebuilt one render *after* the selection flips, so a key read from selection state binds the new network's fetch to the previous network's `rpc`. The [Kit example app](https://github.com/anza-xyz/kit/blob/main/examples/react-app/src/components/Balance.tsx) stamps `chain` onto the client with `extendClient` and reads it back off `useClient()` to keep the two in lockstep.
 
-## Data fetching and subscriptions
+Render lamports with the Kit helpers rather than dividing by `1e9`:
 
-- `@solana/react` ships data hooks (`useAction`, `useRequest`, `useSubscription`, `useTrackedData`) plus adapters for SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`) — prefer these over hand-rolled polling. Always call `useClient<AppClient>()` with your exported client type.
-- Prefer subscriptions/watchers over manual polling; clean up with the returned abort handles.
-- For Next.js: keep server components server-side; only leaf components that call hooks should be client components. Server-side reads can use a plain Kit RPC client (no wallet plugin).
+```tsx
+import { formatDecimalFixedPoint, lamportsToSol } from '@solana/kit';
+
+const solFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5 });
+
+function BalanceDisplay({ accountAddress }: { accountAddress: Address }) {
+  const { lamports } = useBalance(accountAddress);
+  if (lamports == null) return <span>&ndash;</span>;
+  return <span>{formatDecimalFixedPoint(solFormatter, lamportsToSol(lamports))} ◎</span>;
+}
+```
+
+For Next.js: keep server components server-side; only leaf components that call hooks should be client components. Server-side reads can use a plain Kit RPC client (no wallet plugin).
 
 ## Transaction UX checklist
 

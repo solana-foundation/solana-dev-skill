@@ -168,7 +168,8 @@ Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local
 - Solana Kit (@solana/kit): [kit/overview.md](references/kit/overview.md) — plugin clients, quick start, common patterns
 - Kit Plugins & Composition: [kit/plugins.md](references/kit/plugins.md) — ready-to-use clients, wallet plugin, custom composition, available plugins
 - Kit Advanced: [kit/advanced.md](references/kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
-- UI + wallet + hooks: [frontend.md](references/frontend.md)
+- UI + wallet + hooks: [frontend.md](references/frontend.md) — app setup, wallet connection, sending, live balances
+- Kit React bindings (@solana/react): [kit/react.md](references/kit/react.md) — ClientProvider, typed useClient, data hooks, wallet hook reference
 - Legacy web3.js routing (v3 status + migration skill): [kit-web3-interop.md](references/kit-web3-interop.md)
 - Anchor programs: [programs/anchor.md](references/programs/anchor.md)
 - Pinocchio programs: [programs/pinocchio.md](references/programs/pinocchio.md)

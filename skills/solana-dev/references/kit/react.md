@@ -55,10 +55,65 @@ function Balance({ address }: { address: Address }) {
 |------|---------|
 | `useRequest` | One-shot async reads (RPC calls) |
 | `useSubscription` | WebSocket subscriptions with cleanup |
-| `useTrackedData` | Data that updates from a subscription stream |
+| `useTrackedData` | One-shot read seeded into a subscription, slot-deduped |
 | `useAction` | Wrap async actions (send, connect) with pending/error state |
 
-For caching, revalidation, and request dedup, prefer the framework adapters: `@solana/react/swr` (SWR) and `@solana/react/query` (TanStack Query).
+For caching, revalidation, and request dedup, prefer the framework adapters: `@solana/react/swr` (`useRequestSWR`, `useSubscriptionSWR`, `useTrackedDataSWR`) and `@solana/react/query` (`useRequestQuery`, `useSubscriptionQuery`, `useTrackedDataQuery`). Both are optional peer deps — install `swr` or `@tanstack/react-query` yourself.
+
+### useTrackedData / useTrackedDataSWR
+
+Use these for any live account value (balances, token accounts, program state). The hook fires the initial RPC read and the subscription together and slot-dedupes them, so the first paint is fast and out-of-order arrivals never regress the surfaced value. Do **not** hand-roll a `getBalance` + `accountNotifications` pair.
+
+```tsx
+import { useMemo } from 'react';
+import { type Address, type Lamports } from '@solana/kit';
+import { useClient } from '@solana/react';
+import { useTrackedDataSWR } from '@solana/react/swr';
+
+function useBalance(accountAddress: Address) {
+  const { rpc, rpcSubscriptions } = useClient<AppClient>();
+  const spec = useMemo(
+    () => ({
+      initialValueSource: rpc.getBalance(accountAddress, { commitment: 'confirmed' }),
+      initialValueMapper: (lamports: Lamports) => lamports,
+      streamSource: rpcSubscriptions.accountNotifications(accountAddress, {
+        commitment: 'confirmed',
+      }),
+      streamValueMapper: ({ lamports }: { lamports: Lamports }) => lamports,
+    }),
+    [rpc, rpcSubscriptions, accountAddress],
+  );
+  const { data, error } = useTrackedDataSWR(['balance', accountAddress], spec);
+  return { lamports: data?.value ?? null, error };
+}
+```
+
+- `data` is the `SolanaRpcResponse` envelope: `data.value` and `data.context.slot`.
+- The `spec` must be memoized — identity drives teardown/re-run. Pass `null` (for the spec, or the SWR key) to disable.
+- `useTrackedDataSWR` returns SWR's `{ data, error }` only. If you need a `refresh()` button or per-attempt `getAbortSignal` timeouts, use plain `useTrackedData`, which returns `{ data, error, refresh, status }` (`'loading' | 'loaded' | 'error' | 'disabled'`).
+- If the spec changes but the SWR key doesn't, the connection stays bound to the original spec — bump the key to swap specs.
+- In a multi-cluster app, include the cluster in the key and derive it from the same source that built the client — see the note in [../frontend.md](../frontend.md).
+
+### useAction
+
+Wraps any async function with lifecycle state. Use it for sends, connects, and every other imperative flow instead of `useState` + `try/catch`. The wrapped function receives an `AbortSignal` as its first argument, followed by whatever `dispatch` is called with:
+
+```tsx
+const { dispatch, dispatchAsync, data, error, isRunning, reset } = useAction(
+  async (signal: AbortSignal, to: Address) => {
+    const ix = getTransferSolInstruction({ source: client.payer, destination: to, amount });
+    const result = await client.sendTransaction([ix], { abortSignal: signal });
+    return result.context.signature;
+  },
+);
+```
+
+- `dispatch` returns `void` and never throws — the variant for `onClick`. `dispatchAsync` resolves the value or rejects.
+- Dispatching while a call is in flight aborts the first via its `AbortSignal`. Awaiters of the superseded `dispatchAsync` see an `AbortError` — filtering it needs `isAbortError` from `@solana/promises`, which is not re-exported by `@solana/kit`, so add that package explicitly if you go this route. Sticking to `dispatch` avoids the problem entirely.
+- `data` and `error` persist through subsequent `running` states for stale-while-revalidate UX; only `reset()` clears `data`.
+- `fn` is held in a ref pointing at the latest render's closure — no deps array.
+
+Most of the wallet plugin's action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`) are built on this and expose the same shape.
 
 ## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
 
@@ -81,7 +136,8 @@ Requires `@solana/kit-plugin-wallet` 0.14+ and the `walletSigner` (or `walletWit
 | `useDisconnect(client)` | `client.wallet.disconnect()` |
 | `useSignIn(client)` | Sign-In-With-Solana (`client.wallet.signIn(wallet, input)`) |
 | `useSignMessage(client)` | `client.wallet.signMessage(message)` |
-| `useSelectAccount(client)` | Switch account within the authorized wallet |
+
+`useSelectAccount(client)` is the exception: switching accounts is synchronous, so it returns the bound `selectAccount(account)` function directly rather than an `ActionResult` — there is no `dispatch` to destructure.
 
 **Component:** `WalletReadyGate` — takes `client` as a prop, renders `fallback` until wallet discovery settles.
 

@@ -105,6 +105,23 @@ const myLamports = lamports(1_000_000_000n);
 const mySig = signature('5eykt...');
 ```
 
+### SOL ↔ Lamports
+
+`Sol` is a fixed-point value (`{ raw, decimals: 9, ... }`), not a bigint — convert before passing it to an instruction:
+
+```ts
+import { lamports, lamportsToSol, sol, solToLamports, formatDecimalFixedPoint } from '@solana/kit';
+
+solToLamports(sol('1.5')); // lamports(1_500_000_000n)
+lamportsToSol(lamports(1_500_000_000n)); // Sol fixed-point representing 1.5
+
+// Display
+const formatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5 });
+formatDecimalFixedPoint(formatter, lamportsToSol(balance)); // "1.5"
+```
+
+`sol()` parses in `'strict'` rounding mode by default and throws on more than 9 fractional digits; pass a `RoundingMode` (e.g. `sol('1.1234567891', 'round')`) to accept a rounded result. In TypeScript never hand-roll `/ 1e9` — floats lose precision on large balances.
+
 ### Signers
 
 ```ts
