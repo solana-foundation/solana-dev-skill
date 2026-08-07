@@ -60,7 +60,7 @@ function Balance({ address }: { address: Address }) {
 
 For caching, revalidation, and request dedup, prefer the framework adapters: `@solana/react/swr` (`useRequestSWR`, `useSubscriptionSWR`, `useTrackedDataSWR`) and `@solana/react/query` (`useRequestQuery`, `useSubscriptionQuery`, `useTrackedDataQuery`). Both are optional peer deps — install `swr` or `@tanstack/react-query` yourself.
 
-### useTrackedData / useTrackedDataSWR
+### useTrackedData / useTrackedDataSWR / useTrackedDataQuery
 
 Use these for any live account value (balances, token accounts, program state). The hook fires the initial RPC read and the subscription together and slot-dedupes them, so the first paint is fast and out-of-order arrivals never regress the surfaced value. Do **not** hand-roll a `getBalance` + `accountNotifications` pair.
 
@@ -109,11 +109,30 @@ const { dispatch, dispatchAsync, data, error, isRunning, reset } = useAction(
 ```
 
 - `dispatch` returns `void` and never throws — the variant for `onClick`. `dispatchAsync` resolves the value or rejects.
-- Dispatching while a call is in flight aborts the first via its `AbortSignal`. Awaiters of the superseded `dispatchAsync` see an `AbortError` — filtering it needs `isAbortError` from `@solana/promises`, which is not re-exported by `@solana/kit`, so add that package explicitly if you go this route. Sticking to `dispatch` avoids the problem entirely.
+- Dispatching while a call is in flight aborts the first via its `AbortSignal`. Awaiters of the superseded `dispatchAsync` see an `AbortError`, filterable with `isAbortError` from `@solana/promises` — re-exported from `@solana/kit` as of v8; on v7 install `@solana/promises` explicitly. Sticking to `dispatch` where you can avoids the question entirely.
 - `data` and `error` persist through subsequent `running` states for stale-while-revalidate UX; only `reset()` clears `data`.
 - `fn` is held in a ref pointing at the latest render's closure — no deps array.
 
 Most of the wallet plugin's action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`) are built on this and expose the same shape.
+
+### Transaction hooks (Kit v8+)
+
+`@solana/react` v8 adds purpose-built wrappers so you don't hand-roll the `useAction` above. Each takes the client and returns the same `ActionResult`, with `dispatch` taking the send input and the signal already threaded through:
+
+| Hook | Dispatch resolves to |
+|------|----------------------|
+| `useSendTransaction(client)` | `SuccessfulSingleTransactionPlanResult` |
+| `useSendTransactions(client)` | `TransactionPlanResult` (work spanning multiple transactions) |
+| `usePlanTransaction(client)` / `usePlanTransactions(client)` | The plan, without executing it |
+
+```tsx
+const { dispatch, isRunning, data: result } = useSendTransaction(client);
+
+<button disabled={isRunning} onClick={() => dispatch(instructions)}>Send</button>;
+// result?.context.signature
+```
+
+Input is flexible — instructions, an instruction plan, a transaction message, or a transaction plan. On v7, use the `useAction` pattern above.
 
 ## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
 

@@ -148,6 +148,30 @@ function TipButton({ to }: { to: string }) {
 
 Use `dispatch` in event handlers — it returns `void` and never throws, so it can't produce an unhandled rejection. Full hook semantics are in [kit/react.md](kit/react.md#useaction).
 
+**On Kit v8+, use `useSendTransaction` instead** — it is exactly the wrapper above, so the hook collapses to one line:
+
+```tsx
+const { dispatch, isRunning, data: result } = useSendTransaction(client);
+
+<button
+  disabled={isRunning}
+  onClick={() =>
+    dispatch(
+      getTransferSolInstruction({
+        source: client.payer,
+        destination: address(recipient),
+        amount: solToLamports(sol('0.01')),
+      }),
+    )
+  }
+>
+  Tip 0.01 SOL
+</button>;
+// result?.context.signature
+```
+
+`useSendTransactions`, `usePlanTransaction`, and `usePlanTransactions` round out the set — see [kit/react.md](kit/react.md#transaction-hooks-kit-v8).
+
 ## Data fetching and subscriptions
 
 `@solana/react` ships data hooks — `useRequest` (one-shot reads), `useSubscription` (websocket streams), `useTrackedData` (a one-shot read seeded into a subscription, slot-deduped), and `useAction` — plus adapters for SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`). Prefer these over hand-rolled polling, and always call `useClient<AppClient>()` with your exported client type. See [kit/react.md](kit/react.md#data-hooks) for the per-hook return shapes and gotchas.
