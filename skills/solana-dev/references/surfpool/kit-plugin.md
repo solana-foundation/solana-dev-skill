@@ -39,7 +39,9 @@ The three Kit packages are optional peer dependencies of `@solana/surfpool` (`@s
 
 Requirements:
 - **Node.js 20.18+** — the floor `@solana/kit` v7 declares. `@solana/surfpool` itself runs on 18+, but the Kit packages do not, and some program plugins want more (`@solana-program/token` declares 24+).
-- **macOS or Linux x86-64** for embedded mode, which loads a native (napi-rs) binary. Elsewhere, use attach mode.
+- **macOS x64/arm64, or Linux x64 GNU** for embedded mode, which loads a native (napi-rs) binary. Everything else — Linux arm64, musl/Alpine, Windows — has no prebuilt binary; use attach mode there.
+
+Two footguns follow from that list. Docker on Apple Silicon defaults to arm64 Linux containers, which have no binary even though the macOS host does. And a platform package with no artifact is an *optional* dependency, so install succeeds silently and only fails at `require` time with a module-not-found rather than a clear "unsupported platform" message.
 
 ## Embedded Mode
 
