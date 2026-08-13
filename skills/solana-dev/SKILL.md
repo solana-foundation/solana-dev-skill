@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: "2.2.1"
+  version: "2.3.0"
 ---
 
 # Solana Development Skill (Kit-first)
