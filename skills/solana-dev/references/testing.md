@@ -219,9 +219,11 @@ surfpool update
 ### Two Ways to Run
 
 1. **CLI-spawned**: `NO_DNA=1 surfpool start` (or `--ci --daemon` in CI). Tests connect to `http://127.0.0.1:8899`.
-2. **Embedded SDK** (v1.2.0+): run a full surfnet in-process from the test file itself — no daemon, no port conflicts (dynamic ports). npm: `@solana/surfpool`; Rust: `surfpool-sdk = "1.5.0"`.
+2. **Embedded SDK** (v1.2.0+): run a full surfnet in-process from the test file itself — no daemon, no port conflicts (dynamic ports). npm: `@solana/surfpool` (1.5.0); Rust: `surfpool-sdk = "1.5.0"`.
 
 Prefer the embedded SDK for test suites: each suite owns its surfnet lifecycle and CI needs no service orchestration.
+
+In TypeScript, reach for the **Kit plugin** at `@solana/surfpool/kit` rather than driving the `Surfnet` class by hand. One `.use(surfpool())` boots the surfnet, wires a pre-funded payer and the full RPC stack, and installs a typed `client.cheatcodes` RPC — no hand-rolled JSON-RPC helper.
 
 ### Full Example: Kit + Embedded Surfpool (vitest)
 
@@ -231,8 +233,7 @@ npm i @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer @solana-progr
 ```
 
 ```typescript
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Surfnet } from '@solana/surfpool';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
     address,
     appendTransactionMessageInstruction,
@@ -245,57 +246,25 @@ import {
     setTransactionMessageLifetimeUsingBlockhash,
     signTransactionMessageWithSigners,
 } from '@solana/kit';
-import { solanaRpc } from '@solana/kit-plugin-rpc';
-import { generatedSigner } from '@solana/kit-plugin-signer';
+import { surfpool } from '@solana/surfpool/kit';
 import { getTransferSolInstruction } from '@solana-program/system';
 
-const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const USDC_MINT = address('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
 
-// Minimal cheatcode helper — plain JSON-RPC over fetch
-async function cheatcode(rpcUrl: string, method: string, params: unknown[]) {
-    const res = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-    });
-    const { result, error } = await res.json();
-    if (error) throw new Error(`${method}: ${error.message}`);
-    return result;
-}
+// Embedded surfnet on dynamic ports, pre-funded payer, typed cheatcodes.
+// Async in embedded mode — await the chain.
+const client = await createClient().use(surfpool());
 
-const makeClient = (rpcUrl: string) =>
-    createClient()
-        .use(generatedSigner())              // async — await the final client
-        .use(solanaRpc({ rpcUrl }));
-
-let surfnet: Surfnet;
-let client: Awaited<ReturnType<typeof makeClient>>;
-
-beforeAll(async () => {
-    surfnet = Surfnet.start();               // in-process surfnet, dynamic port
-    client = await makeClient(surfnet.rpcUrl);
-
-    // Fund the test signer via cheatcode (no faucet round-trip)
-    await cheatcode(surfnet.rpcUrl, 'surfnet_setAccount', [
-        client.payer.address,
-        { lamports: 10_000_000_000 },
-    ]);
-});
-
-afterAll(() => surfnet.stop());              // idempotent graceful shutdown
+afterAll(() => client.surfnet.stop());       // idempotent graceful shutdown
 
 describe('deposit flow', () => {
     it('credits USDC set up via cheatcode', async () => {
-        // Give the signer a 1,000 USDC ATA without minting
-        await cheatcode(surfnet.rpcUrl, 'surfnet_setTokenAccount', [
-            client.payer.address,
-            USDC_MINT,
-            { amount: 1_000_000_000 },
-        ]);
-
-        const balance = await client.rpc
-            .getBalance(client.payer.address)
+        // Give the payer a 1,000 USDC ATA without minting
+        await client.cheatcodes
+            .setTokenAccount(client.payer.address, USDC_MINT, { amount: 1_000_000_000n })
             .send();
+
+        const balance = await client.rpc.getBalance(client.payer.address).send();
         expect(balance.value).toBeGreaterThan(0n);
 
         // Exercise the program under test
@@ -309,10 +278,10 @@ describe('deposit flow', () => {
 
     it('handles time-dependent logic via timeTravel', async () => {
         // Jump 30 days ahead; returns the resulting EpochInfo
-        const epochInfo = await cheatcode(surfnet.rpcUrl, 'surfnet_timeTravel', [
-            { absoluteTimestamp: Math.floor(Date.now() / 1000) + 30 * 86_400 },
-        ]);
-        expect(epochInfo.absoluteSlot).toBeGreaterThan(0);
+        const epochInfo = await client.cheatcodes
+            .timeTravel({ absoluteTimestamp: Math.floor(Date.now() / 1000) + 30 * 86_400 })
+            .send();
+        expect(epochInfo.absoluteSlot).toBeGreaterThan(0n);
         // Assert unlock/vesting/expiry behavior here
     });
 
@@ -334,19 +303,26 @@ describe('deposit flow', () => {
         const base64VersionedTx = getBase64EncodedWireTransaction(signedTx);
 
         // Simulates WITHOUT committing state; returns CU + pre/post snapshots
-        const profile = await cheatcode(surfnet.rpcUrl, 'surfnet_profileTransaction', [
-            base64VersionedTx, // base64-encoded VersionedTransaction
-            'deposit',         // optional tag for surfnet_getProfileResultsByTag
-        ]);
-        expect(profile.computeUnitsConsumed).toBeLessThan(200_000);
+        const profile = await client.cheatcodes
+            .profileTransaction(
+                base64VersionedTx, // base64-encoded VersionedTransaction
+                'deposit',         // optional tag for getProfileResultsByTag
+            )
+            .send();
+        // CUs live on transactionProfile; per-instruction breakdown is in
+        // profile.instructionProfiles
+        expect(profile.transactionProfile.computeUnitsConsumed).toBeLessThan(200_000n);
     });
 });
 ```
 
 Notes:
-- `Surfnet.start()` returns a pre-funded payer and cheatcode helpers on the instance as well; the raw `fetch` helper above works identically against a CLI-spawned surfnet.
-- `surfnet.stop()` is idempotent — always wire it into `afterAll` so failed runs don't leak processes.
-- npm package `@solana/surfpool` ships native binaries (napi-rs) for macOS x64/arm64 and Linux x64 GNU.
+- Cheatcode method names drop the `surfnet_` prefix and responses come back unwrapped from their `{ context, value }` envelope. Integers parse as `bigint`, so `u64` values survive past 2^53.
+- `client.surfnet.stop()` is idempotent — always wire it into `afterAll` so failed runs don't leak processes. Nothing disposes a module-scoped client for you.
+- Pass `surfpool({ rpcUrl })` to attach to an already-running `surfpool start` instead of booting one — that form is synchronous and needs a `payer` already on the client.
+- npm package `@solana/surfpool` ships native binaries (napi-rs) for macOS x64/arm64 and Linux x64 GNU. Embedded mode needs one; attach mode does not.
+
+Full plugin reference — entry points, configuration, attach mode, codec-based account seeding: [surfpool/kit-plugin.md](surfpool/kit-plugin.md).
 
 Rust equivalent with `surfpool-sdk`:
 

@@ -123,8 +123,23 @@ surfpool start --ci --daemon
 
 Since v1.2.0, a full surfnet can be embedded in-process — no shelling out, no fixed ports. Ideal for integration test suites.
 
-- **TypeScript**: npm package `@solana/surfpool` (latest npm release 1.4.0 as of Jul 2026 — npm may lag the CLI version; napi-rs native bindings for macOS x64/arm64, Linux x64 GNU)
+- **TypeScript**: npm package `@solana/surfpool` (1.5.0; napi-rs native bindings for macOS x64/arm64, Linux x64 GNU). Ships a Kit plugin at the `@solana/surfpool/kit` subpath.
 - **Rust**: crate `surfpool-sdk = "1.5.0"` — `Surfnet::builder()` with options such as `BlockProductionMode`
+
+With `@solana/kit`, use the plugin rather than the raw class — it boots the surfnet, installs a pre-funded payer and the RPC stack, and adds a typed cheatcodes RPC in one call:
+
+```typescript
+import { createClient } from "@solana/kit";
+import { surfpool } from "@solana/surfpool/kit";
+
+const client = await createClient().use(surfpool());  // dynamic ports, pre-funded payer
+
+await client.cheatcodes.timeTravel({ absoluteSlot: 1_000_000n }).send();
+
+client.surfnet.stop();             // idempotent graceful shutdown — wire into afterAll()
+```
+
+The `Surfnet` class remains the entry point for non-Kit clients:
 
 ```typescript
 import { Surfnet } from "@solana/surfpool";
@@ -132,12 +147,10 @@ import { Surfnet } from "@solana/surfpool";
 const surfnet = Surfnet.start();   // dynamic port, pre-funded payer, cheatcode helpers
 console.log(surfnet.rpcUrl);       // point any RPC client here
 
-// ... run tests against surfnet.rpcUrl ...
-
-surfnet.stop();                    // idempotent graceful shutdown — wire into afterAll()
+surfnet.stop();
 ```
 
-Pair with `@solana/kit`: `createClient().use(generatedSigner()).use(solanaRpc({ rpcUrl: surfnet.rpcUrl }))`. See [testing.md](../testing.md) for a full vitest example.
+See [kit-plugin.md](kit-plugin.md) for the full plugin reference and [testing.md](../testing.md) for a vitest example.
 
 ## When to Use Surfpool
 

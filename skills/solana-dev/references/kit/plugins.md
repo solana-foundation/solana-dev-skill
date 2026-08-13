@@ -84,6 +84,31 @@ await client.sendTransaction([myInstruction]);
 
 `litesvm()` is Node.js only. Browser/React Native builds throw.
 
+### Surfpool Test Client (`@solana/surfpool/kit`)
+
+Same shape as the LiteSVM client, but backed by a real surfnet with a full JSON-RPC endpoint, lazy mainnet forking, and cheatcodes. Use it when a test needs RPC/WebSocket or mainnet account state; use `litesvm()` when in-process is enough.
+
+```bash
+npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer @solana/surfpool
+```
+
+```ts
+import { createClient } from '@solana/kit';
+import { surfpool } from '@solana/surfpool/kit';
+
+// Embedded surfnet on dynamic ports — async, so await the chain
+const client = await createClient().use(surfpool());
+
+client.payer;      // pre-funded KeyPairSigner, no airdrop plugin needed
+client.cheatcodes; // typed surfnet_* RPC (prefix stripped, responses unwrapped)
+client.surfnet;    // native Surfnet handle
+
+await client.sendTransaction([myInstruction]);
+client.surfnet.stop(); // wire into afterAll — teardown is not automatic
+```
+
+`surfpool()` brings its own signer, so it needs no `generatedSigner()`. Passing `surfpool({ rpcUrl })` attaches to a running `surfpool start` instead of booting one — that form is synchronous and requires a `payer` already on the client. Full reference: [../surfpool/kit-plugin.md](../surfpool/kit-plugin.md).
+
 ### Browser Wallet Client (`@solana/kit-plugin-wallet`)
 
 Wallet Standard-based wallet connection as a Kit plugin — the wallet fills the signer role(s) instead of a keypair:
@@ -241,6 +266,7 @@ const client = await createClient()
 | `@solana/kit-plugin-wallet` | `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner` | Browser wallet connection (Wallet Standard); adds `client.wallet` |
 | `@solana/kit-plugin-litesvm` | `litesvm`, `litesvmConnection`, `litesvmAirdrop`, `litesvmTransactionPlanner`, `litesvmTransactionPlanExecutor` | In-memory test environment |
 | `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions`, `transactionPlanner`, `transactionPlanExecutor` | Instruction batching + sending sugar (bundled into `solanaRpc`; install directly only for custom low-level composition) |
+| `@solana/surfpool/kit` | `surfpool`, `surfnetCheatcodes`, `createSurfnetCheatcodesRpc` | Embedded (or attached) Surfnet test environment; adds `client.cheatcodes`, `client.surfnet`, `client.rpcUrl`, `client.wsUrl` |
 
 **Deprecated — do not install:** `@solana/kit-plugins` (umbrella), `@solana/kit-plugin-airdrop` (use `rpcAirdrop` / `litesvmAirdrop`), `@solana/kit-plugin-payer` (use `@solana/kit-plugin-signer`), `@solana/kit-client-rpc` / `@solana/kit-client-litesvm` (use the all-in-one plugins above).
 

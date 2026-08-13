@@ -7,6 +7,8 @@ description: Full reference for all surfnet_* RPC methods to manipulate time, ac
 
 All 26 `surfnet_*` JSON-RPC methods available on the surfnet RPC endpoint (default `http://127.0.0.1:8899`), as of Surfpool v1.5.0.
 
+In TypeScript, call these through `client.cheatcodes` from the Kit plugin instead of hand-rolling JSON-RPC — method names drop the `surfnet_` prefix and responses arrive unwrapped. See [kit-plugin.md](kit-plugin.md#typed-cheatcodes). The schemas below are the wire format, shared by both paths.
+
 ## Account Manipulation
 
 | Method | Description |

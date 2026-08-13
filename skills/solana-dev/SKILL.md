@@ -62,6 +62,7 @@ Use this Skill when the user asks for:
 5) **Testing (Surfpool-centered)**
 - Unit tests: LiteSVM (in-process, Rust/TS) or Mollusk (Rust instruction harness).
 - Integration tests: **Surfpool** — mainnet forking with lazy account cloning, 26 `surfnet_*` cheatcodes (time travel, account/token state, oracle scenarios, CU profiling), embeddable in-process via the `@solana/surfpool` SDK, and the default `anchor test` runner in Anchor 1.0+.
+- In TypeScript, boot the surfnet through the Kit plugin: `await createClient().use(surfpool())` from `@solana/surfpool/kit` installs a pre-funded payer, the RPC stack, and a typed `client.cheatcodes` — see [surfpool/kit-plugin.md](references/surfpool/kit-plugin.md).
 - Use solana-test-validator only when you need full validator runtime fidelity not emulated by Surfpool.
 
 ## Agent safety guardrails
@@ -116,7 +117,7 @@ Always be explicit about:
 
 ### 4. Add tests
 - Unit test: LiteSVM or Mollusk.
-- Integration test: Surfpool — spawn via CLI (`surfpool start --ci`) or embed with `@solana/surfpool`; use cheatcodes to set up state instead of long setup transactions.
+- Integration test: Surfpool — embed with `.use(surfpool())` from `@solana/surfpool/kit` (preferred) or spawn via CLI (`surfpool start --ci`); use cheatcodes to set up state instead of long setup transactions.
 - For "wallet UX", add mocked hook/provider tests where appropriate.
 
 ### 5. Deliverables expectations
@@ -185,5 +186,6 @@ Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local
 - **Version compatibility:** [compatibility-matrix.md](references/compatibility-matrix.md)
 - **Common errors & fixes:** [common-errors.md](references/common-errors.md)
 - **Surfpool (local network):** [surfpool/overview.md](references/surfpool/overview.md)
+- **Surfpool Kit plugin (`@solana/surfpool/kit`):** [surfpool/kit-plugin.md](references/surfpool/kit-plugin.md) — embedded surfnet behind a Kit client, typed cheatcodes
 - **Surfpool cheatcodes:** [surfpool/cheatcodes.md](references/surfpool/cheatcodes.md)
 - **Anchor v1 migration:** [anchor/migrating-v0.32-to-v1.md](references/anchor/migrating-v0.32-to-v1.md)
