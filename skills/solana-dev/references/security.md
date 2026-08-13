@@ -14,7 +14,7 @@ description: Program and client security checklist covering account validation, 
 - [Client-Side Checklist](#client-side-checklist)
 - [Token-2022 Extension Security](#token-2022-extension-security)
 - [Token-2022 Audit Checklist](#token-2022-audit-checklist)
-- [Additional Vulnerability Categories (19–36)](#additional-vulnerability-categories-1936)
+- [Additional Vulnerability Categories](#additional-vulnerability-categories)
 - [Agent-Assisted Development Safety](#agent-assisted-development-safety)
 - [Security Review Questions](#security-review-questions)
 
@@ -31,7 +31,7 @@ Assume the attacker controls:
 
 ## Vulnerability Categories
 
-### 1. Missing Owner Checks
+### Missing Owner Checks
 
 **Risk**: Attacker creates fake accounts with identical data structure and correct discriminator.
 
@@ -58,7 +58,7 @@ if !account.is_owned_by(&crate::ID) {
 
 ---
 
-### 2. Missing Signer Checks
+### Missing Signer Checks
 
 **Risk**: Any account can perform operations that should be restricted to specific authorities.
 
@@ -90,7 +90,7 @@ if !self.accounts.authority.is_signer() {
 
 ---
 
-### 3. Arbitrary CPI Attacks
+### Arbitrary CPI Attacks
 
 **Risk**: Program blindly calls whatever program is passed as parameter, becoming a proxy for malicious code.
 
@@ -118,7 +118,7 @@ if self.accounts.token_program.key() != &pinocchio_token::ID {
 
 ---
 
-### 4. Reinitialization Attacks
+### Reinitialization Attacks
 
 **Risk**: Calling initialization functions on already-initialized accounts overwrites existing data.
 
@@ -151,7 +151,7 @@ if data[0] == ACCOUNT_DISCRIMINATOR {
 
 ---
 
-### 5. PDA Sharing Vulnerabilities
+### PDA Sharing Vulnerabilities
 
 **Risk**: Same PDA used across multiple users enables unauthorized access.
 
@@ -173,7 +173,7 @@ seeds = [b"pool", vault.key().as_ref(), owner.key().as_ref()]
 
 ---
 
-### 6. Type Cosplay Attacks
+### Type Cosplay Attacks
 
 **Risk**: Accounts with identical data structures but different purposes can be substituted.
 
@@ -195,7 +195,7 @@ if data[0] != EXPECTED_DISCRIMINATOR {
 
 ---
 
-### 7. Duplicate Mutable Accounts
+### Duplicate Mutable Accounts
 
 **Risk**: Passing same account twice causes program to overwrite its own changes.
 
@@ -217,7 +217,7 @@ if self.accounts.account_1.key() == self.accounts.account_2.key() {
 
 ---
 
-### 8. Revival Attacks
+### Revival Attacks
 
 **Risk**: Closed accounts can be restored within same transaction by refunding lamports.
 
@@ -242,7 +242,7 @@ pub fn close(account: &AccountInfo, destination: &AccountInfo) -> ProgramResult 
 
 ---
 
-### 9. Data Matching Vulnerabilities
+### Data Matching Vulnerabilities
 
 **Risk**: Correct type/ownership validation but incorrect assumptions about data relationships.
 
@@ -268,7 +268,7 @@ if data.authority != *authority.key() {
 
 Anchor handles the following automatically via its account type system. When writing Pinocchio programs, these must be enforced manually in your `TryFrom` implementations.
 
-### 10. Sysvar Spoofing
+### Sysvar Spoofing
 
 **Risk**: Pinocchio does not implicitly validate sysvar accounts (unlike Anchor). Any account can be passed where `Clock`, `Rent`, or `SlotHashes` is expected.
 
@@ -286,7 +286,7 @@ let rent = Rent::get()?;
 
 ---
 
-### 11. Bump Canonicalization
+### Bump Canonicalization
 
 **Risk**: Non-canonical bumps can be used to derive valid but unintended PDAs.
 
@@ -312,7 +312,7 @@ if account.address() != &expected {
 
 ---
 
-### 12. Lamport Griefing (Pre-funded PDA)
+### Lamport Griefing (Pre-funded PDA)
 
 **Risk**: An attacker sends lamports to a PDA before your program initializes it, causing the initialization to fail or behave unexpectedly.
 
@@ -338,7 +338,7 @@ Assign { account, owner: &crate::ID }.invoke_signed(signers)?;
 
 ---
 
-### 13. Missing Writable / Read-Only Enforcement (Hardening)
+### Missing Writable / Read-Only Enforcement (Hardening)
 
 **Risk**: Primarily a hardening gap. Missing mutability checks can weaken invariants and make authorization bugs easier to exploit.
 
@@ -418,7 +418,7 @@ Token-2022 is not an upgrade to SPL Token. It's a different program with differe
 
 ---
 
-### 10. Transfer Fee Accounting
+### Transfer Fee Accounting
 
 **Risk**: Token-2022 lets a mint charge fees on every transfer. The fee is deducted from the receiver's end, not the sender's.
 
@@ -428,7 +428,7 @@ Token-2022 is not an upgrade to SPL Token. It's a different program with differe
 
 ---
 
-### 11. calculate_fee vs calculate_inverse_fee Rounding
+### calculate_fee vs calculate_inverse_fee Rounding
 
 **Risk**: `calculate_fee` and `calculate_inverse_fee` are not inverses of each other. `calculate_fee(amount)` can return a different value than `calculate_inverse_fee(post_amount)`.
 
@@ -438,7 +438,7 @@ Token-2022 is not an upgrade to SPL Token. It's a different program with differe
 
 ---
 
-### 12. Permanent Delegate Authority
+### Permanent Delegate Authority
 
 **Risk**: If a mint has the Permanent Delegate extension, that delegate can transfer or burn ANY amount from ANY token account. No approval needed. No signature from the account owner.
 
@@ -454,7 +454,7 @@ This is not an exploit. It is a feature being misused.
 
 ---
 
-### 13. Mint Close and Reinitialization Attacks
+### Mint Close and Reinitialization Attacks
 
 **Risk**: Token-2022 lets mints be closed via the MintCloseAuthority extension. A closed mint can be recreated at the same address with different extensions.
 
@@ -464,7 +464,7 @@ This is not an exploit. It is a feature being misused.
 
 ---
 
-### 14. Token Account Closure Conditions
+### Token Account Closure Conditions
 
 **Risk**: In old SPL, `amount == 0` means closable. In Token-2022, that's not sufficient.
 
@@ -480,7 +480,7 @@ Miss any one of these and your close instruction reverts. If that close is part 
 
 ---
 
-### 15. Stop Using `transfer` — Use `transfer_checked`
+### Stop Using `transfer` — Use `transfer_checked`
 
 **Risk**: The old `transfer` instruction is deprecated in Token-2022. If the token account has a Transfer Hook or Transfer Fee extension, calling `transfer` instead of `transfer_checked` returns `MintRequiredForTransfer` and your instruction fails silently.
 
@@ -495,7 +495,7 @@ Miss any one of these and your close instruction reverts. If that close is part 
 
 ---
 
-### 16. Transfer Hook Security Surface
+### Transfer Hook Security Surface
 
 **Risk**: Transfer hooks run custom program logic on every transfer. Powerful — and dangerous.
 
@@ -508,7 +508,7 @@ One missing check = one critical.
 
 ---
 
-### 17. Metadata Spoofing and Memo Requirements
+### Metadata Spoofing and Memo Requirements
 
 **Risk**: Anyone can create a Metadata account and point it at a legitimate mint. Only the metadata that the mint's own pointer references back to is authoritative.
 
@@ -518,7 +518,7 @@ One missing check = one critical.
 
 ---
 
-### 18. Don't Hardcode Token Account Rent
+### Don't Hardcode Token Account Rent
 
 **Risk**: SPL Token accounts are always 165 bytes. Token-2022 accounts vary based on extensions.
 
@@ -542,11 +542,11 @@ One missing check = one critical.
 
 ---
 
-## Additional Vulnerability Categories (19–36)
+## Additional Vulnerability Categories
 
 Vectors beyond the core categories above: composition and CPI hazards, ordering and timing attacks, arithmetic and rounding, and author-side trust.
 
-### 19. Unvalidated `remaining_accounts`
+### Unvalidated `remaining_accounts`
 
 **Risk**: `remaining_accounts` bypasses Anchor's `#[derive(Accounts)]` validation entirely — nothing is checked for you.
 
@@ -554,7 +554,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 20. Self-Reentrancy (A → A)
+### Self-Reentrancy (A → A)
 
 **Risk**: Unlike traditional EVM reentrancy, Solana permits a program to CPI into itself. A re-entrant call can observe/mutate half-updated state.
 
@@ -562,7 +562,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 21. Log Injection / Spoofing
+### Log Injection / Spoofing
 
 **Risk**: Program logs are trivially manipulated via injection, truncation, or spoofing.
 
@@ -570,7 +570,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 22. Slot / Epoch Boundary Exploitation
+### Slot / Epoch Boundary Exploitation
 
 **Risk**: Hanging state transitions on slot or epoch boundaries creates windows an attacker with Jito bundles or validator/leader access can exploit.
 
@@ -578,7 +578,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 23. TOCTOU (Bait-and-Switch)
+### TOCTOU (Bait-and-Switch)
 
 **Risk**: State read at check-time differs from use-time — e.g. an offer's terms change between when a user reads them and when their acceptance lands.
 
@@ -586,7 +586,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 24. Pool Squatting / Graduation Frontrunning
+### Pool Squatting / Graduation Frontrunning
 
 **Risk**: When pool addresses are derived from predictable seeds (e.g. a launchpad's intended address), an attacker can create the pool first at that address.
 
@@ -594,7 +594,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 25. Donation Attacks
+### Donation Attacks
 
 **Risk**: Your instructions are never the only way funds arrive — anyone can transfer tokens to, or add lamports to, your accounts. Inferring balances from raw `token_account.amount` lets an attacker skew your accounting.
 
@@ -602,7 +602,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 26. On-Chain Randomness
+### On-Chain Randomness
 
 **Risk**: Blockchains are deterministic — true on-chain randomness is impossible. Attackers can predict block hashes, manipulate seed account values, and revert transactions with unfavorable outcomes.
 
@@ -610,7 +610,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 27. Rounding Direction
+### Rounding Direction
 
 **Risk**: Every rounding site is a value leak if it rounds the wrong way. Consistent adversarial rounding drains a protocol over many transactions.
 
@@ -618,7 +618,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 28. Unchecked Type Casts
+### Unchecked Type Casts
 
 **Risk**: `as` casts silently truncate (e.g. `u64 as u32`), corrupting financial values.
 
@@ -626,7 +626,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 29. Upgradeable Dependency Risk
+### Upgradeable Dependency Risk
 
 **Risk**: Composing with an upgradeable external program means its authority can change its behavior out from under you.
 
@@ -634,7 +634,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 30. `unsafe` Rust Blocks
+### `unsafe` Rust Blocks
 
 **Risk**: `unsafe` bypasses the compiler's safety checks (raw pointers, unsafe fn calls, static mut, union fields). Common in Solana for raw account-data casts: `unsafe { &*(data.as_ptr() as *const TokenAccount) }`. Misuse causes memory corruption, misaligned reads, or OOB access.
 
@@ -642,7 +642,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 31. Frontrunning (Trading and Initialization)
+### Frontrunning (Trading and Initialization)
 
 **Risk**: An observer can insert a transaction just before the victim's. Beyond the obvious trading case, this includes **initialization frontrunning**: an attacker initializes an account at the target address with different settings just before the victim, who then keeps using it thinking it holds their settings.
 
@@ -650,7 +650,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 32. Malicious / Observing RPC
+### Malicious / Observing RPC
 
 **Risk**: By default a signed transaction goes to an RPC node before it reaches the leader — a mempool-like vantage point. A malicious RPC can observe, delay, or sandwich your transaction (bundling its own buys/sells around yours without touching your signature) for worse execution.
 
@@ -658,7 +658,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 33. Stale Account State Around CPIs
+### Stale Account State Around CPIs
 
 **Risk**: Programs work on a deserialized copy of accounts and only write back at instruction end. A CPI sees **on-chain** state, not your working copy — and after a CPI your working copy does **not** reflect the callee's writes unless you reload.
 
@@ -666,7 +666,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 34. Unsafe Arbitrary Invoke
+### Unsafe Arbitrary Invoke
 
 **Risk**: Programs that invoke a user-supplied program (multisig/DAO proposals, some flashloans, bridges/VMs) pass through the parent call's signatures — including the user's wallet signature — to the callee with both `invoke` and `invoke_signed`.
 
@@ -674,7 +674,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 35. Transient Account Owner Spoofing
+### Transient Account Owner Spoofing
 
 **Risk**: An owner check (`account.owner == other_program::ID`) is insufficient to conclude the account will always be that type. An attacker can `assign` a lamport-free system account to `other_program` for the duration of one transaction; after it ends the account is reclaimed by the system program and can later hold fake data.
 
@@ -682,7 +682,7 @@ Vectors beyond the core categories above: composition and CPI hazards, ordering 
 
 ---
 
-### 36. Hidden Backdoors (Trust Minimization)
+### Hidden Backdoors (Trust Minimization)
 
 **Risk**: A determined program author can hide rug vectors: upgrade authority, fee bumped to 100%, backdoor code buried in test modules or dependencies, or accounts initialized by one program version then hidden in a later upgrade.
 
@@ -705,37 +705,45 @@ When an AI agent is generating or executing Solana code on the user's behalf:
 
 ## Security Review Questions
 
-1. Can an attacker pass a fake account that passes validation?
-2. Can an attacker call this instruction without proper authorization?
-3. Can an attacker substitute a malicious program for CPI targets?
-4. Can an attacker reinitialize an existing account?
-5. Can an attacker exploit shared PDAs across users?
-6. Can an attacker pass the same account for multiple parameters?
-7. Can an attacker revive a closed account in the same transaction?
-8. Can an attacker exploit mismatches between stored and provided data?
-9. Does the protocol correctly handle Token-2022 transfer fees in all accounting paths?
-10. Can an attacker exploit permanent delegate authority to drain token accounts?
-11. Can an attacker close and reinitialize a mint to bypass extension rules?
-12. Is the protocol using `transfer_checked` for all Token-2022 token movements?
-13. Can an attacker pass a fake sysvar account (Clock, Rent, SlotHashes)?
-14. Does PDA creation store and validate the canonical bump?
-15. Can an attacker pre-fund a PDA to grief initialization?
-16. Are accounts that must be read-only protected from being passed as writable?
-17. Is every account pulled from `remaining_accounts` manually validated (owner, discriminator, seeds, count)?
-18. Can a self-CPI (A → A) observe or corrupt half-updated state?
-19. Does any critical logic parse program logs instead of events?
-20. Do any value-bearing transitions hang on slot/epoch boundaries an attacker could game?
-21. Are taking-instruction terms pinned precisely to prevent TOCTOU bait-and-switch?
-22. Can a pool/account be squatted at a predictable derived address before your program creates it?
-23. Does any accounting infer balances from raw token/lamport amounts (donation attack)?
-24. Does any mechanism rely on on-chain randomness?
-25. Does every rounding site round in the protocol's favor?
-26. Are there unchecked `as` casts that could truncate financial values?
-27. Does the program compose with an upgradeable external program that could change behavior under it, and are those CPIs given minimum privileges?
-28. Is every `unsafe` block minimal, documented, and sound on alignment/bounds?
-29. Can an instruction be frontrun — including initialization frontrunning of a target address?
-30. Does the program assume a benign RPC (no sandwich/observation protection for users)?
-31. Are accounts reloaded after CPIs (and writes serialized before CPIs that read them)?
-32. When invoking a user-supplied program, are non-mutated accounts withheld or read-only, and self-reentrancy blocked?
-33. Is any account trusted as a type based only on a point-in-time owner check (transient owner attack)?
-34. Is every author-side rug vector closed — upgrade authority, hard-coded caps the admin cannot exceed, reviewed dependencies, no backdoor paths in test modules, reproducible builds?
+Each question names the vector section it maps to.
+
+- **Missing Owner Checks** — Can an attacker pass a fake account that passes validation?
+- **Missing Signer Checks** — Can an attacker call this instruction without proper authorization?
+- **Arbitrary CPI Attacks** — Can an attacker substitute a malicious program for CPI targets?
+- **Reinitialization Attacks** — Can an attacker reinitialize an existing account?
+- **PDA Sharing Vulnerabilities** — Can an attacker exploit shared PDAs across users?
+- **Type Cosplay Attacks** — Can an attacker pass an account of a different type with a compatible layout?
+- **Duplicate Mutable Accounts** — Can an attacker pass the same account for multiple parameters?
+- **Revival Attacks** — Can an attacker revive a closed account in the same transaction?
+- **Data Matching Vulnerabilities** — Can an attacker exploit mismatches between stored and provided data?
+- **Transfer Fee Accounting** — Does the protocol correctly handle Token-2022 transfer fees in all accounting paths?
+- **calculate_fee vs calculate_inverse_fee Rounding** — Is the right fee helper used for the direction of the calculation?
+- **Permanent Delegate Authority** — Can an attacker exploit permanent delegate authority to drain token accounts?
+- **Mint Close and Reinitialization Attacks** — Can an attacker close and reinitialize a mint to bypass extension rules?
+- **Token Account Closure Conditions** — Is every extension's closure condition checked before closing a token account?
+- **Stop Using `transfer` — Use `transfer_checked`** — Is the protocol using `transfer_checked` for all Token-2022 token movements?
+- **Transfer Hook Security Surface** — Is the mint's transfer hook program treated as untrusted code in the transfer path?
+- **Metadata Spoofing and Memo Requirements** — Is on-chain metadata trusted for identity, and are destination memo requirements handled?
+- **Don't Hardcode Token Account Rent** — Is token account rent calculated dynamically from the extension set?
+- **Sysvar Spoofing** — Can an attacker pass a fake sysvar account (Clock, Rent, SlotHashes)?
+- **Bump Canonicalization** — Does PDA creation store and validate the canonical bump?
+- **Lamport Griefing (Pre-funded PDA)** — Can an attacker pre-fund a PDA to grief initialization?
+- **Missing Writable / Read-Only Enforcement (Hardening)** — Are accounts that must be read-only protected from being passed as writable?
+- **Unvalidated `remaining_accounts`** — Is every account pulled from `remaining_accounts` manually validated (owner, discriminator, seeds, count)?
+- **Self-Reentrancy (A → A)** — Can a self-CPI observe or corrupt half-updated state?
+- **Log Injection / Spoofing** — Does any critical logic parse program logs instead of events?
+- **Slot / Epoch Boundary Exploitation** — Do any value-bearing transitions hang on slot/epoch boundaries an attacker could game?
+- **TOCTOU (Bait-and-Switch)** — Are taking-instruction terms pinned precisely to prevent bait-and-switch?
+- **Pool Squatting / Graduation Frontrunning** — Can a pool/account be squatted at a predictable derived address before your program creates it?
+- **Donation Attacks** — Does any accounting infer balances from raw token/lamport amounts?
+- **On-Chain Randomness** — Does any mechanism rely on on-chain randomness?
+- **Rounding Direction** — Does every rounding site round in the protocol's favor?
+- **Unchecked Type Casts** — Are there unchecked `as` casts that could truncate financial values?
+- **Upgradeable Dependency Risk** — Does the program compose with an upgradeable external program that could change behavior under it, and are those CPIs given minimum privileges?
+- **`unsafe` Rust Blocks** — Is every `unsafe` block minimal, documented, and sound on alignment/bounds?
+- **Frontrunning (Trading and Initialization)** — Can an instruction be frontrun, including initialization frontrunning of a target address?
+- **Malicious / Observing RPC** — Does the program assume a benign RPC (no sandwich/observation protection for users)?
+- **Stale Account State Around CPIs** — Are accounts reloaded after CPIs, and writes serialized before CPIs that read them?
+- **Unsafe Arbitrary Invoke** — When invoking a user-supplied program, are non-mutated accounts withheld or read-only, and self-reentrancy blocked?
+- **Transient Account Owner Spoofing** — Is any account trusted as a type based only on a point-in-time owner check?
+- **Hidden Backdoors (Trust Minimization)** — Is every author-side rug vector closed — upgrade authority, hard-coded caps the admin cannot exceed, reviewed dependencies, no backdoor paths in test modules, reproducible builds?
