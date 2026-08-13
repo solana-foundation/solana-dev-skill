@@ -5,6 +5,18 @@ description: A testing pyramid for Solana programs using LiteSVM and Mollusk for
 
 # Testing Strategy (LiteSVM / Mollusk / Surfpool)
 
+## Contents
+
+- [Testing Pyramid](#testing-pyramid)
+- [Unit Tests: LiteSVM](#unit-tests-litesvm)
+- [Unit Tests: Mollusk](#unit-tests-mollusk)
+- [Integration Tests: Surfpool](#integration-tests-surfpool)
+- [Cluster Smoke Tests](#cluster-smoke-tests)
+- [Fuzz Testing](#fuzz-testing)
+- [Test Layout Recommendation](#test-layout-recommendation)
+- [CI Guidance](#ci-guidance)
+- [Best Practices](#best-practices)
+
 ## Testing Pyramid
 
 1. **Unit tests (fast, in-process)**: LiteSVM or Mollusk

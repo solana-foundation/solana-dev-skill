@@ -7,6 +7,15 @@ description: Solana Kit plugin architecture, all-in-one RPC/LiteSVM plugins, sig
 
 Kit clients are built by chaining `.use(plugin)` calls onto `createClient()`. Each plugin extends the client with new properties or methods. Plugins that depend on others (e.g., RPC needs a payer) must come after their dependencies — TypeScript enforces this.
 
+## Contents
+
+- [All-in-One Clients](#all-in-one-clients)
+- [Client API Surface](#client-api-surface)
+- [Signer Plugins (`@solana/kit-plugin-signer`)](#signer-plugins-solanakit-plugin-signer)
+- [Custom Client Composition](#custom-client-composition)
+- [Plugin Catalog](#plugin-catalog)
+- [Building Custom Plugins](#building-custom-plugins)
+
 ## All-in-One Clients
 
 ### Production Client (mainnet/devnet/custom)

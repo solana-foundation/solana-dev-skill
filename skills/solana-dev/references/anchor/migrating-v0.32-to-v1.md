@@ -11,6 +11,29 @@ Items marked **[COMPILE]** will prevent the program from building if not address
 
 ---
 
+## Contents
+
+- [Applying the Migration (order matters)](#applying-the-migration-order-matters)
+- [0. Check and update toolchain [CLI]](#0-check-and-update-toolchain-cli)
+- [1. Update dependencies [COMPILE]](#1-update-dependencies-compile)
+- [2. Fix CPI context construction [COMPILE]](#2-fix-cpi-context-construction-compile)
+- [3. Resolve duplicate mutable account errors [COMPILE]](#3-resolve-duplicate-mutable-account-errors-compile)
+- [4. Update `declare_program!` usages [COMPILE]](#4-update-declare_program-usages-compile)
+- [5. Close legacy IDL accounts and re-publish [DEPLOY]](#5-close-legacy-idl-accounts-and-re-publish-deploy)
+- [6. Update `AccountInfo` usage [WARNING]](#6-update-accountinfo-usage-warning)
+- [7. Suppress `unexpected_cfgs` warnings from macros [WARNING]](#7-suppress-unexpected_cfgs-warnings-from-macros-warning)
+- [8. Handle IDL external account exclusion [IDL]](#8-handle-idl-external-account-exclusion-idl)
+- [9. Switch the test runner [CLI]](#9-switch-the-test-runner-cli)
+- [10. Remove external `solana` CLI dependency [CLI]](#10-remove-external-solana-cli-dependency-cli)
+- [11. Clean up `Anchor.toml` and removed CLI commands [CLI]](#11-clean-up-anchortoml-and-removed-cli-commands-cli)
+- [12. Disallow multiple `#[error_code]` blocks [COMPILE]](#12-disallow-multiple-error_code-blocks-compile)
+- [13. Update `Context` lifetime annotations [COMPILE]](#13-update-context-lifetime-annotations-compile)
+- [14. Update Borsh 1.x serialization usage [COMPILE]](#14-update-borsh-1x-serialization-usage-compile)
+- [15. Update Solana SDK 3.x API changes [COMPILE]](#15-update-solana-sdk-3x-api-changes-compile)
+- [16. Audit external program CPI crates [COMPILE]](#16-audit-external-program-cpi-crates-compile)
+- [17. Migrate `spl-token` / `spl-token-2022` / `spl-associated-token-account` direct dependencies [COMPILE]](#17-migrate-spl-token--spl-token-2022--spl-associated-token-account-direct-dependencies-compile)
+- [What's New in v1](#whats-new-in-v1)
+
 ## Applying the Migration (order matters)
 
 IDL housekeeping and the program code upgrade are **independent tracks** that can be done in parallel, but have one hard constraint: legacy IDL accounts must be closed with the **v0.32 CLI before deploying v1**.

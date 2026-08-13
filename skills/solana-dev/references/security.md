@@ -5,6 +5,19 @@ description: Program and client security checklist covering account validation, 
 
 # Solana Security Checklist (Program + Client)
 
+## Contents
+
+- [Core Principle](#core-principle)
+- [Vulnerability Categories](#vulnerability-categories)
+- [Pinocchio-Specific Vulnerabilities](#pinocchio-specific-vulnerabilities)
+- [Program-Side Checklist](#program-side-checklist)
+- [Client-Side Checklist](#client-side-checklist)
+- [Token-2022 Extension Security](#token-2022-extension-security)
+- [Token-2022 Audit Checklist](#token-2022-audit-checklist)
+- [Additional Vulnerability Categories (19–36)](#additional-vulnerability-categories-1936)
+- [Agent-Assisted Development Safety](#agent-assisted-development-safety)
+- [Security Review Questions](#security-review-questions)
+
 ## Core Principle
 
 Assume the attacker controls:

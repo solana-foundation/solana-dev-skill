@@ -7,6 +7,18 @@ description: Quick-start guide for @solana/kit using createClient + .use() plugi
 
 `@solana/kit` is the JavaScript SDK for building Solana applications. Modular, tree-shakable, full TypeScript support. Clients are built by composing plugins onto `createClient()` via `.use()`.
 
+## Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Client API](#client-api)
+- [Core Concepts](#core-concepts)
+- [Common Patterns](#common-patterns)
+- [Codama Program Clients](#codama-program-clients)
+- [Package Overview](#package-overview)
+- [Best Practices](#best-practices)
+- [Reference Files](#reference-files)
+
 ## Installation
 
 ```bash

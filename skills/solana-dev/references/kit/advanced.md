@@ -11,6 +11,18 @@ For most use cases, prefer the plugin clients in [overview.md](overview.md) and 
 
 ---
 
+## Contents
+
+- [Manual Transaction Pipeline](#manual-transaction-pipeline)
+- [Compute Budget](#compute-budget)
+- [Signing](#signing)
+- [Sending](#sending)
+- [Complete Manual Example](#complete-manual-example)
+- [Direct RPC Client](#direct-rpc-client)
+- [Error Handling](#error-handling)
+- [Building Custom Plugins](#building-custom-plugins)
+- [Assembling Domain-Specific Clients](#assembling-domain-specific-clients)
+
 ## Manual Transaction Pipeline
 
 ### Transaction Flow

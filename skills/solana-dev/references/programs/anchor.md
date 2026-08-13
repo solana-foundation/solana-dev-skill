@@ -5,6 +5,28 @@ description: Write Solana programs using the Anchor framework for fast iteration
 
 # Programs with Anchor (default choice)
 
+## Contents
+
+- [When to use Anchor](#when-to-use-anchor)
+- [Core Advantages](#core-advantages)
+- [Core Macros](#core-macros)
+- [Account Types](#account-types)
+- [Account Constraints](#account-constraints)
+- [Account Discriminators](#account-discriminators)
+- [Instruction Patterns](#instruction-patterns)
+- [Cross-Program Invocations (CPIs)](#cross-program-invocations-cpis)
+- [Error Handling](#error-handling)
+- [Token Accounts](#token-accounts)
+- [LazyAccount (Anchor 0.31+)](#lazyaccount-anchor-031)
+- [Zero-Copy Accounts](#zero-copy-accounts)
+- [Remaining Accounts](#remaining-accounts)
+- [Version Management](#version-management)
+- [Compatibility Notes for Anchor 0.32.0](#compatibility-notes-for-anchor-0320)
+- [Security Best Practices](#security-best-practices)
+- [Testing](#testing)
+- [IDL and Clients](#idl-and-clients)
+- [Migrations](#migrations)
+
 ## When to use Anchor
 Use Anchor by default when:
 - You want fast iteration with reduced boilerplate

@@ -5,6 +5,20 @@ description: Diagnose and fix common errors encountered when building on Solana,
 
 # Common Solana Development Errors & Solutions
 
+## Contents
+
+- [GLIBC Errors](#glibc-errors)
+- [Rust / Cargo Errors](#rust--cargo-errors)
+- [Build Errors](#build-errors)
+- [Installation Errors](#installation-errors)
+- [Testing Errors](#testing-errors)
+- [Anchor Version Migration Issues](#anchor-version-migration-issues)
+- [Miscellaneous Errors](#miscellaneous-errors)
+- [LiteSVM Errors](#litesvm-errors)
+- [Platform Tools Errors](#platform-tools-errors)
+- [edition2024 Crate Incompatibility (Cargo 1.84.0)](#edition2024-crate-incompatibility-cargo-1840)
+- [Verified Test Results (Debian 12, Jan 2026)](#verified-test-results-debian-12-jan-2026)
+
 ## GLIBC Errors
 
 ### `GLIBC_2.39 not found` / `GLIBC_2.38 not found`

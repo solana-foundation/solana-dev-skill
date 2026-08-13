@@ -7,6 +7,28 @@ description: Build high-performance Solana programs with zero-copy techniques an
 
 Pinocchio is a minimalist Rust crate for crafting Solana programs without the heavyweight `solana-program` crate. It delivers significant performance gains through zero-copy techniques and minimal dependencies.
 
+## Contents
+
+- [When to Use Pinocchio](#when-to-use-pinocchio)
+- [Crate Versions](#crate-versions)
+- [Pinocchio 0.11 Migration Notes](#pinocchio-011-migration-notes)
+- [Core Architecture](#core-architecture)
+- [Utility Macros](#utility-macros)
+- [Traits System](#traits-system)
+- [Instruction Directory Structure](#instruction-directory-structure)
+- [Account Validation](#account-validation)
+- [Token programs](#token-programs)
+- [Cross-Program Invocations (CPIs)](#cross-program-invocations-cpis)
+- [Reading and Writing Data](#reading-and-writing-data)
+- [Error Handling](#error-handling)
+- [Closing Accounts Securely](#closing-accounts-securely)
+- [Performance Optimization](#performance-optimization)
+- [Batch Instructions](#batch-instructions)
+- [Events](#events)
+- [Testing](#testing)
+- [Build & Deployment](#build--deployment)
+- [Security Checklist](#security-checklist)
+
 ## When to Use Pinocchio
 
 Use Pinocchio when you need:

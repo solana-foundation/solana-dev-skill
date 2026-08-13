@@ -5,6 +5,20 @@ description: Implement private, encrypted token balances on Solana using the Tok
 
 # Confidential Transfers (Token-2022 Extension)
 
+## Contents
+
+- [When to use this guidance](#when-to-use-this-guidance)
+- [Current Network Availability](#current-network-availability)
+- [Key Concepts](#key-concepts)
+- [Dependencies](#dependencies)
+- [Common Types](#common-types)
+- [Operation Flow](#operation-flow)
+- [Key Operations](#key-operations)
+- [Reading Balances](#reading-balances)
+- [Security Considerations](#security-considerations)
+- [Reference Implementation](#reference-implementation)
+- [Limitations](#limitations)
+
 ## When to use this guidance
 
 Use this guidance when the user asks about:
