@@ -81,7 +81,7 @@ Vitest and Jest work identically with their own `afterAll` hooks.
 
 ### Teardown Is Not Automatic
 
-Call `client.surfnet.stop()` in teardown so ports and servers are released. A client held at module scope — the usual test-file pattern — is never disposed, so nothing stops the surfnet for you; without a teardown hook the process can hang or log `connection reset` warnings as the OS tears down sockets at exit.
+As of `@solana/surfpool` 1.5.0, call `client.surfnet.stop()` in teardown so ports and servers are released. The client implements no disposal protocol, so a client held at module scope — the usual test-file pattern — is never cleaned up; without a teardown hook the process can hang or log `connection reset` warnings as the OS tears down sockets at exit. The plugin does stop the surfnet if setup itself throws.
 
 `stop()` is idempotent and synchronous — it returns once the runtime has actually closed. Stopping is final: creating another client boots a fresh instance.
 
