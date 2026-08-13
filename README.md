@@ -83,6 +83,7 @@ skills/solana-dev/
     │   └── migrating-v0.32-to-v1.md # Anchor v1 migration
     └── surfpool/
         ├── overview.md              # Surfpool local network guide
+        ├── kit-plugin.md            # @solana/surfpool/kit — embedded surfnet behind a Kit client
         └── cheatcodes.md            # Surfpool cheatcodes reference (26 surfnet_* methods)
 ```
 
