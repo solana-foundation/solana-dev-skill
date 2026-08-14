@@ -357,7 +357,9 @@ await airdrop({
 
 **Accounts**: `getAccountInfo`, `getMultipleAccounts`, `getBalance`, `getTokenAccountBalance`, `getTokenAccountsByOwner`, `getProgramAccounts`
 
-**Transactions**: `sendTransaction`, `simulateTransaction`, `getTransaction`, `getSignatureStatuses`, `getSignaturesForAddress`
+**Transactions**: `sendTransaction`, `simulateTransaction`, `getTransaction`, `getSignatureStatuses`, `getSignaturesForAddress`, `getTransactionsForAddress`
+
+`getTransactionsForAddress` (`@solana/kit` 7.1+) combines address-history discovery and per-transaction fetching into a single query, with server-side filtering, bidirectional sorting, and cursor-based pagination — replacing a `getSignaturesForAddress` + N× `getTransaction` fan-out. It supports a `signatures`-only mode and a `full` mode (`json` / `jsonParsed` / `base58` / `base64`). It is part of the upcoming solana-rpc spec (`solana-rpc/superbank`) and is already available from major RPC providers, but is not yet universally supported — check the target endpoint before relying on it. Transaction metadata (from `getTransactionsForAddress` and `getTransaction`) also gained an optional `meta.costUnits` field.
 
 **Blocks**: `getBlock`, `getBlockHeight`, `getSlot`, `getLatestBlockhash`, `isBlockhashValid`
 

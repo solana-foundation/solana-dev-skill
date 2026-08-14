@@ -196,7 +196,7 @@ export function useBalance(accountAddress?: Address) {
 }
 ```
 
-**Multi-cluster apps:** include the cluster in the cache key, and derive it from the same source that built the client — the client is typically rebuilt one render *after* the selection flips, so a key read from selection state binds the new network's fetch to the previous network's `rpc`. The [Kit example app](https://github.com/anza-xyz/kit/blob/main/examples/react-app/src/components/Balance.tsx) stamps `chain` onto the client with `extendClient` and reads it back off `useClient()` to keep the two in lockstep.
+**Multi-cluster apps:** include the cluster in the cache key, and derive it from the same source that built the client — the client is typically rebuilt one render *after* the selection flips, so a key read from selection state binds the new network's fetch to the previous network's `rpc`. The [Kit example app](https://github.com/anza-xyz/kit/blob/main/examples/react-app/src/components/Balance.tsx) stamps `chain` onto the client with `extendClient` and reads it back off `useClient<AppClient>()` to keep the two in lockstep.
 
 Render lamports with the Kit helpers rather than dividing by `1e9`:
 

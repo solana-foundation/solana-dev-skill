@@ -94,6 +94,8 @@ curl -s https://api.mainnet-beta.solana.com -X POST \
   -d '{"jsonrpc":"2.0","id":1,"method":"getSignaturesForAddress","params":["<PUBKEY>",{"limit":10}]}'
 ```
 
+If the endpoint supports it, `getTransactionsForAddress` replaces this call plus the follow-up `getTransaction` fan-out with one query — it does address-history discovery and per-transaction fetching together, with server-side filtering, bidirectional sorting, cursor pagination, and both `signatures`-only and `full` (`json`/`jsonParsed`/`base58`/`base64`) response modes. It's part of the upcoming solana-rpc spec and already live at major RPC providers, but not yet universally available — check the target endpoint before assuming it's there.
+
 ### Cluster liveness — `getSlot` / `getHealth`
 
 Quick sanity check that the endpoint is reachable.

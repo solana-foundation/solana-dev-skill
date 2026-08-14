@@ -35,7 +35,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 }
 ```
 
-Always pass your client type to `useClient` — a bare `useClient()` gives you an untyped `Client<object>` (and the type parameter is expected to become required):
+Always pass your client type to `useClient` — as of `@solana/react` 7.1+, the `TClient` type parameter is required, so a bare `useClient()` fails to compile:
 
 ```tsx
 import { useClient } from '@solana/react';
@@ -59,6 +59,8 @@ function Balance({ address }: { address: Address }) {
 | `useAction` | Wrap async actions (send, connect) with pending/error state |
 
 For caching, revalidation, and request dedup, prefer the framework adapters: `@solana/react/swr` (`useRequestSWR`, `useSubscriptionSWR`, `useTrackedDataSWR`) and `@solana/react/query` (`useRequestQuery`, `useSubscriptionQuery`, `useTrackedDataQuery`). Both are optional peer deps — install `swr` or `@tanstack/react-query` yourself.
+
+As of `@solana/react` 7.1+, `useSubscriptionQuery` / `useTrackedDataQuery` (the TanStack Query adapters) surface a new error, `SOLANA_ERROR__SUBSCRIBABLE__STREAM_CLOSED_WITHOUT_ERROR`, when the underlying stream store closes in an error state with a nullish payload. The SWR adapters are unaffected.
 
 ### useTrackedData / useTrackedDataSWR / useTrackedDataQuery
 
@@ -109,11 +111,60 @@ const { dispatch, dispatchAsync, data, error, isRunning, reset } = useAction(
 ```
 
 - `dispatch` returns `void` and never throws — the variant for `onClick`. `dispatchAsync` resolves the value or rejects.
-- Dispatching while a call is in flight aborts the first via its `AbortSignal`. Awaiters of the superseded `dispatchAsync` see an `AbortError`, filterable with `isAbortError` from `@solana/promises`, which `@solana/kit` 7 does not re-export — install that package explicitly if you need it. Sticking to `dispatch` where you can avoids the question entirely.
+- Dispatching while a call is in flight aborts the first via its `AbortSignal`. Awaiters of the superseded `dispatchAsync` see an `AbortError`, filterable with `isAbortError`, importable directly from `@solana/kit` (7.1+ re-exports `@solana/promises`). Sticking to `dispatch` where you can avoids the question entirely.
 - `data` and `error` persist through subsequent `running` states for stale-while-revalidate UX; only `reset()` clears `data`.
 - `fn` is held in a ref pointing at the latest render's closure — no deps array.
 
 Most of the wallet plugin's action hooks (`useConnect`, `useDisconnect`, `useSignIn`, `useSignMessage`) are built on this and expose the same shape.
+
+## Client Capability Hooks (requires `@solana/react` 7.1+)
+
+These read off whichever plugin capabilities the client advertises. Each takes the client as its only argument.
+
+### usePayer / useIdentity
+
+`usePayer(client)` reads `client.payer`; `useIdentity(client)` reads `client.identity`. Both return the current `TransactionSigner`, or `undefined` while none is available.
+
+```tsx
+const payer = usePayer(client);
+const identity = useIdentity(client);
+return <span>{payer ? `Paying with ${payer.address}` : 'No payer'}</span>;
+```
+
+- When the client advertises `subscribeToPayer` / `subscribeToIdentity`, the hook subscribes so the returned signer always reflects the latest value. Otherwise it falls back to a one-time read.
+- **Gotcha:** if reading the underlying value throws — as the wallet plugin does for `payer`/`identity` when it owns those roles and no wallet is connected — the hook surfaces `undefined` rather than throwing.
+
+### usePlanTransaction / usePlanTransactions / useSendTransaction / useSendTransactions
+
+Wrap a client's transaction planning/sending capabilities as `useAction`-style reactive actions — same `dispatch` / `dispatchAsync` / `data` / `error` / `isRunning` shape as `useAction`.
+
+| Hook | Wraps | `dispatch` args | Resolves with |
+|------|-------|------------------|----------------|
+| `usePlanTransaction(client)` | `client.planTransaction` | instruction input | the planned transaction message |
+| `usePlanTransactions(client)` | `client.planTransactions` | instruction input | the full transaction plan (may span multiple transactions) |
+| `useSendTransaction(client)` | `client.sendTransaction` | instructions, an instruction plan, a transaction message, or a transaction plan | the successful single-transaction-plan result |
+| `useSendTransactions(client)` | `client.sendTransactions` | instructions, an instruction plan, or a transaction plan | the transaction plan result for all transactions |
+
+```tsx
+const { dispatch, data, isRunning } = useSendTransaction(client);
+<button disabled={isRunning} onClick={() => dispatch(instructions)}>Send</button>
+```
+
+Use the singular hooks when you expect everything to fit in one transaction; reach for the plural hooks when instructions might need splitting across transactions.
+
+### useAirdrop
+
+Wraps a client's `airdrop` capability (`ClientWithAirdrop`) as a tracked `useAction`. `dispatch(address, amount)` requests an airdrop with an injected `AbortSignal` and resolves with the transaction `Signature`, or `undefined` when the airdrop was applied without a transaction (e.g. some local-validator implementations update balances directly, with no transaction to sign).
+
+```tsx
+import { useAirdrop } from '@solana/react';
+import { lamports } from '@solana/kit';
+
+const { dispatch, isRunning } = useAirdrop(client);
+<button disabled={isRunning} onClick={() => dispatch(address, lamports(1_000_000_000n))}>
+  Airdrop 1 SOL
+</button>
+```
 
 ## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
 
