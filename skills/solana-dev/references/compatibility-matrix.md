@@ -314,6 +314,7 @@ Full reference: [transactions-v1.md](./transactions-v1.md). Feature gate: `txv1a
 | `solders` (Python) | **0.29.0** | Read and send. Earlier releases have neither |
 | `solana-go` | unreleased | [PR #481](https://github.com/solana-foundation/solana-go/pull/481) |
 | `yellowstone-grpc-proto` (Rust) | **12.6.0** | First release whose generated code has `Message.config` (field 7) |
+| `yellowstone-grpc-client` (Rust) | **13.3.0** | 12.x connects, but pair either with a direct 12.6.0 proto pin |
 | yellowstone-grpc geyser plugin | **15.1.1** | Earlier builds downgrade v1 to v0 before it reaches the wire |
 | `@triton-one/yellowstone-grpc` | **6.0.0** | 5.x drops field 7 — a `^5.0.9` pin loses every v1 budget |
 

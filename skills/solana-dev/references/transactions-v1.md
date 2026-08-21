@@ -170,6 +170,7 @@ match (&message.config, message.versioned) {
 | Dependency | Minimum | Why |
 |---|---|---|
 | `yellowstone-grpc-proto` (Rust) | 12.6.0 | first release whose generated code has `Message.config` |
+| `yellowstone-grpc-client` (Rust) | 13.3.0 | 12.x connects, but pair it with a 12.6.0 proto pin (see below) |
 | yellowstone-grpc geyser plugin | 15.1.1 | earlier builds downgrade v1 to v0 before it reaches the wire — no client-side fix recovers the config |
 | `@triton-one/yellowstone-grpc` (TS) | 6.0.0 | 5.x drops field 7, so a `^5.0.9` pin loses every v1 budget |
 | Go client | none | yellowstone ships pre-generated Go code that predates field 7 — generate your own from the tag's `.proto` |
@@ -192,9 +193,13 @@ import { getTransferSolInstruction } from '@solana-program/system';
 import {
   appendTransactionMessageInstruction,
   assertIsTransactionWithBlockhashLifetime,
+  assertIsTransactionWithinSizeLimit,
   createTransactionMessage,
+  getBase64EncodedWireTransaction,
+  getSignatureFromTransaction,
   lamports,
   pipe,
+  sendAndConfirmTransactionFactory,
   setTransactionMessageConfig,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -221,6 +226,21 @@ const message = pipe(
 
 const transaction = await signTransactionMessageWithSigners(message);
 assertIsTransactionWithBlockhashLifetime(transaction); // signing widens the lifetime union
+// Version-aware: allows 4096 bytes for v1, 1232 for legacy and v0.
+assertIsTransactionWithinSizeLimit(transaction);
+
+// Simulate and surface the result before sending. base64 is mandatory —
+// base58 stays capped at 1232 bytes whatever the transaction version.
+const simulation = await rpc
+  .simulateTransaction(getBase64EncodedWireTransaction(transaction), { encoding: 'base64' })
+  .send();
+if (simulation.value.err) throw new Error(`Simulation failed: ${simulation.value.logs?.join('\n')}`);
+
+// Send only after the user has reviewed the simulation and approved.
+await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions })(transaction, {
+  commitment: 'confirmed',
+});
+const signature = getSignatureFromTransaction(transaction);
 ```
 
 In Rust (`solana-message` 4.2+), the config is a const-buildable value passed straight into compilation:
