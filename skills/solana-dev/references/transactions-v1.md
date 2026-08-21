@@ -60,9 +60,18 @@ async function isV1Active(rpc): Promise<boolean> {
 
 ## What v1 changes
 
-v1 reorders the envelope: signatures move to the tail so the version byte lands at offset zero. A v1 transaction starts with byte `129` (`0x81`); v0 starts with `0x80`. Infrastructure can identify the format without deserializing.
+v1 reorders the envelope: signatures move to the **tail**, so the version byte lands at offset zero of the serialized transaction. A v1 transaction therefore starts with byte `129` (`0x81`), and infrastructure can identify the format without deserializing.
 
-The four compute-budget values move out of `ComputeBudgetProgram` instructions and into a **message config** at fixed offsets (a bitmask plus a positional value list), so the network can rank a transaction by priority fee with one fixed-offset read.
+This is new to v1. In legacy and v0 the signature vector comes first, so a serialized transaction starts with its signature *count* (`0x01` for the common single-signer case) — `0x80` is the v0 prefix on the **message**, which sits after the signatures. Do not sniff `0x80` at offset zero to detect v0; it isn't there.
+
+The four compute-budget values also move out of `ComputeBudgetProgram` instructions and into a **message config**: a `u32` bitmask at a fixed offset, plus a positional value list carrying only the fields the mask marks present. Per kit's v1 message codec the layout is:
+
+```
+version | header(3) | configMask(u32) | lifetimeToken(32) | numInstructions(u8)
+        | numStaticAccounts(u8) | staticAccounts[N×32] | configValues | instructions…
+```
+
+So the mask is at a fixed offset, but the **values are not** — they sit after the address array, at an offset computed from `numStaticAccounts` plus a popcount of the mask. That is still dramatically cheaper than the v0 path, which requires deserializing the instruction list and scanning it for ComputeBudget instructions: the network can price a transaction from the header alone, without touching instruction data.
 
 | Limit | legacy | v0 | v1 |
 |---|---|---|---|
@@ -80,9 +89,11 @@ Dropping lookup tables costs nothing in practice: 64 inline addresses at 32 byte
 | Loaded accounts cap | `SetLoadedAccountsDataSizeLimit` instruction | `config.loadedAccountsDataSizeLimit` |
 | Heap size | `RequestHeapFrame` instruction | `config.heapSize` |
 
+`heapSize` keeps the `RequestHeapFrame` bounds: a multiple of 1024, between 32 KiB and 256 KiB. Out-of-range is a **sanitization failure** — the transaction is rejected before execution, so it never lands and never shows a program error. Kit does not validate this client-side, so porting a `RequestHeapFrame` value straight across without checking it is a silent way to build an unlandable transaction.
+
 ## Reading transactions and blocks (breaking)
 
-Pass `maxSupportedTransactionVersion: 1` — the JSON **integer** `1`, not `"1"` — on `getTransaction`, `getBlock`, and `blockSubscribe`. Passing `0` or `"legacy"` fails on v1 exactly like omitting it.
+Pass `maxSupportedTransactionVersion: 1` — the JSON **integer** `1` — on `getTransaction`, `getBlock`, and `blockSubscribe`. Passing `0` fails on a v1 transaction exactly like omitting the parameter. Passing a **string** (`"1"`, `"legacy"`) is worse: the field is numeric, so it fails request validation with `-32602` on *every* call, v1 or not.
 
 ```ts
 const tx = await rpc.getTransaction(signature, { maxSupportedTransactionVersion: 1 }).send();
@@ -123,7 +134,7 @@ Opted-in responses carry a `transactionConfig` object inside `message` for v1 tr
 
 ## Indexing (silently breaking)
 
-Three ways an indexer goes quietly wrong rather than loudly failing.
+Four ways an indexer goes quietly wrong rather than loudly failing.
 
 **1. ComputeBudget instruction scanning returns nothing.** Any pipeline deriving priority fees or CU limits by scanning instructions reports **zero for every v1 transaction, without erroring**. Read `transactionConfig` instead, and persist it — it has no v0 equivalent.
 
@@ -216,6 +227,7 @@ In Rust (`solana-message` 4.2+), the config is a const-buildable value passed st
 
 ```rust
 use solana_message::{v1, VersionedMessage};
+use solana_transaction::versioned::VersionedTransaction;
 
 const CONFIG: v1::TransactionConfig = v1::TransactionConfig::empty()
     .with_compute_unit_limit(20_000)
@@ -295,7 +307,7 @@ Matching readers: `getTransactionMessageComputeUnitLimit`, `getTransactionMessag
 
 ## Plugin clients cannot build v1 yet
 
-⚠️ The skill's default path — `createClient().use(signer(…)).use(solanaRpc(…))` then `client.sendTransactions(…)` — **cannot send v1 today.** `solanaRpc` forwards its `transactionConfig` to `rpcTransactionPlanner`, and that planner (`@solana/kit-plugin-rpc` 0.15.0) defines the `version: 1` shape for forward compatibility but **throws at runtime**:
+⚠️ The skill's default path — `createClient().use(signer(…)).use(solanaRpc(…))` then `client.sendTransactions(…)` — **cannot send v1 today.** `solanaRpc` forwards its `transactionConfig` to `rpcTransactionPlanner`, and that planner defines the `version: 1` shape for forward compatibility but **throws at runtime** (still true as of 0.18.0, the current release):
 
 ```
 Version 1 transactions are not yet supported by `rpcTransactionPlanner`.
@@ -310,8 +322,8 @@ For v1, drop to the manual `pipe()` path shown above with `@solana/kit` 8 direct
 |---|---|
 | `@solana/kit` | **8.0.0+** — full support. 7.1.1 has the codecs, setters, and `maxSupportedTransactionVersion: 1`, but not the types for `createTransactionMessage({ version: 1 })` |
 | `@solana/kit-plugin-rpc` | Read paths fine; **sending v1 throws** — see above |
-| `@solana/web3.js@rc` (v3) | Supported — [`compileToV1Message`](https://github.com/solana-foundation/solana-web3.js/pull/3861) |
-| `@solana/web3.js` 1.x | **Read only, 1.99.0+** ([PR](https://github.com/solana-foundation/solana-web3.js/pull/3866)). Cannot build, sign, serialize, or send v1. Pre-1.99.0 cannot read it at all. Migrate to kit 8 or web3.js v3 |
+| `@solana/web3.js@rc` (v3) | Landing in **`3.0.0-rc.3`** — [PR #3861](https://github.com/solana-foundation/solana-web3.js/pull/3861) (`compileToV1Message`) is ready but unmerged. ⚠️ The currently published `3.0.0-rc.2` exports only `compileToLegacyMessage` / `compileToV0Message`, so pin rc3 once it ships rather than `@rc` |
+| `@solana/web3.js` 1.x | Read support landing in **`1.99.0`** — [PR #3866](https://github.com/solana-foundation/solana-web3.js/pull/3866), drafted but unmerged; latest published is `1.98.4`. ⚠️ Even on 1.99.0 this is **read only** — 1.x will never build, sign, serialize, or send v1. Migrate to kit 8 for that |
 | Rust `solana-*` | Ready. `v1::Message` landed in `solana-message` 4.1.0; use 4.2.x (adds the inherent `Message::serialize()`) |
 | Python `solders` | 0.29.0+ — read and send. Earlier releases have neither |
 | Go `solana-go` | Unreleased — [PR #481](https://github.com/solana-foundation/solana-go/pull/481) adds `solana.TransactionConfig`, `solana.MessageVersionV1`, and `solana.TransactionV1Config` |
@@ -363,7 +375,7 @@ Decompiling a v1 compiled message fetches no accounts, since v1 cannot use addre
 - Audit for ComputeBudget instruction scanning; read `transactionConfig` instead, and persist it — it has no v0 equivalent.
 - Treat `blockSubscribe`'s `block: null` with an error as a failure, not an empty block.
 - Regenerate protobuf stubs and discriminate on `config` presence, never on the `versioned` boolean.
-- Move to Agave 4.2.x-generation client dependencies. On web3.js 1.x, upgrade to 1.99.0+ (reads v1, cannot send it).
+- Move to Agave 4.2.x-generation client dependencies. On web3.js 1.x, upgrade to 1.99.0 once it ships — it reads v1 but cannot send it, so anything that *sends* needs `@solana/kit` 8 or web3.js v3 (rc3+).
 
 **If you send transactions:**
 

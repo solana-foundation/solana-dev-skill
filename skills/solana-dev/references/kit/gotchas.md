@@ -196,7 +196,7 @@ Full reference: [transactions-v1.md](../transactions-v1.md).
 
 ### `version: 1` throws on the plugin client
 
-**Cause:** `rpcTransactionPlanner` in `@solana/kit-plugin-rpc` (0.15.0) defines the `version: 1` config shape for forward compatibility but rejects it at runtime.
+**Cause:** `rpcTransactionPlanner` in `@solana/kit-plugin-rpc` defines the `version: 1` config shape for forward compatibility but rejects it at runtime — still true as of 0.18.0.
 
 ```ts
 // ❌ Runtime error: "Version 1 transactions are not yet supported by `rpcTransactionPlanner`."
@@ -244,7 +244,7 @@ The estimate has no margin, and an account created between simulation and send i
 
 ```ts
 // ❌ Type error on a v1 message
-setTransactionMessageComputeUnitPrice(microLamports(250_000n), v1Message);
+setTransactionMessageComputeUnitPrice(250_000n, v1Message);
 
 // ✅ Fix: total lamports, not a per-CU price
 setTransactionMessagePriorityFeeLamports(5_000n, v1Message);

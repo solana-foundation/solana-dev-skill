@@ -443,7 +443,7 @@ The estimate is the exact cost of one simulated run with no margin. Add headroom
 
 ### `Version 1 transactions are not yet supported by rpcTransactionPlanner`
 
-**Cause:** `@solana/kit-plugin-rpc` (0.15.0) defines the `version: 1` planner config for forward compatibility but throws at runtime.
+**Cause:** `@solana/kit-plugin-rpc` defines the `version: 1` planner config for forward compatibility but throws at runtime — still true as of 0.18.0, the current release.
 
 **Fix:** Build v1 with `@solana/kit` 8 and the manual `pipe()` path. Keep plugin clients for legacy/v0.
 
@@ -468,6 +468,8 @@ solana -u m feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL
 **Cause:** Deriving the budget by scanning instructions for the ComputeBudget program. On v1 those values live in the message config, so the scan finds nothing and reports zero **without erroring**. Over gRPC there is no version gate at all, so nothing signals the problem.
 
 **Fix:** Read `transactionConfig` (JSON-RPC) or `Message.config` (gRPC). Discriminate on `config` presence, never on the `versioned` boolean — it is `true` for both v0 and v1. Bump `yellowstone-grpc-proto` to 12.6.0+, the geyser plugin to 15.1.1+, or `@triton-one/yellowstone-grpc` to 6.0.0+; older stubs drop field 7 silently.
+
+---
 
 ## LiteSVM Errors
 

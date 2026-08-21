@@ -61,6 +61,8 @@ Two consequences that drive design:
 
 ### v1 reorders the envelope
 
-`v1` ([SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)) moves the signature vector to the **tail** so the version byte sits at offset zero — infrastructure identifies the format with a single byte read, no deserialization. A v1 transaction starts with `129` (`0x81`); v0 starts with `0x80`.
+`v1` ([SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)) moves the signature vector to the **tail** so the version byte sits at offset zero of the serialized transaction — infrastructure identifies the format with a single byte read, no deserialization. A v1 transaction starts with `129` (`0x81`).
 
-The four compute-budget values also move out of `ComputeBudgetProgram` instructions and into a message-level config — a bitmask plus a positional value list at fixed offsets — so the scheduler can rank a transaction by priority fee with one fixed-offset read instead of scanning and deserializing its instruction list. That is what makes the 4096-byte size limit affordable. See [transactions-v1.md](transactions-v1.md).
+Legacy and v0 put signatures first, so they start with a signature *count* instead; `0x80` is the v0 prefix on the **message**, not on the transaction.
+
+The four compute-budget values also move out of `ComputeBudgetProgram` instructions and into a message-level config: a `u32` bitmask at a fixed offset plus a positional value list holding only the fields the mask marks present. The values sit after the address array, so reaching them costs a length read and a popcount — but not a deserialization and scan of the instruction list, which is what pricing a v0 transaction requires. That is what makes the 4096-byte size limit affordable. See [transactions-v1.md](transactions-v1.md).

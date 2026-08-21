@@ -5,6 +5,20 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 
 # Solana Version Compatibility Matrix
 
+## Contents
+
+- [Master Compatibility Table](#master-compatibility-table)
+- [Solana CLI Version Mapping](#solana-cli-version-mapping)
+- [Platform Tools → Rust Toolchain Mapping](#platform-tools-rust-toolchain-mapping)
+- [GLIBC Requirements by OS](#glibc-requirements-by-os)
+- [Anchor ↔ Solana Crate Versions](#anchor-solana-crate-versions)
+- [Anchor CLI ↔ anchor-lang Crate Compatibility](#anchor-cli-anchor-lang-crate-compatibility)
+- [SPL Token Crate Versions](#spl-token-crate-versions)
+- [Node.js / TypeScript Requirements](#nodejs-typescript-requirements)
+- [Known Working Combinations (Tested)](#known-working-combinations-tested)
+- [Testing Tools: LiteSVM / Bankrun Compatibility](#testing-tools-litesvm-bankrun-compatibility)
+- [Transaction v1 (SIMD-0385) Minimum Versions](#transaction-v1-simd-0385-minimum-versions)
+
 ## Master Compatibility Table
 
 | Anchor Version | Release Date | Solana CLI | Rust Version | Platform Tools | GLIBC Req | Node.js | Key Notes |
@@ -294,9 +308,9 @@ Full reference: [transactions-v1.md](./transactions-v1.md). Feature gate: `txv1a
 | `solana-message` (Rust) | **4.2.0** | `v1::Message` landed in 4.1.0; 4.2.0 adds the inherent `Message::serialize()` |
 | `solana-rpc-client` (Rust) | 4.2.1 | `max_supported_transaction_version: Some(1)` |
 | `@solana/kit` | **8.0.0** | 7.1.1 has the v1 codecs, config setters, and `maxSupportedTransactionVersion: 1`, but 8.0.0 is the first to *type* `createTransactionMessage({ version: 1 })` |
-| `@solana/kit-plugin-rpc` | — | Reads fine; **sending v1 throws** as of 0.15.0 — use the manual `pipe()` path |
-| `@solana/web3.js` (v3, `@rc`) | RC | `compileToV1Message` |
-| `@solana/web3.js` 1.x | **1.99.0** | ⚠️ **Read only** — cannot build, sign, serialize, or send v1. Pre-1.99.0 cannot read it at all |
+| `@solana/kit-plugin-rpc` | — | Reads fine; **sending v1 throws** through 0.18.0 (current) — use the manual `pipe()` path |
+| `@solana/web3.js` (v3, `@rc`) | **3.0.0-rc.3** (pending) | [PR #3861](https://github.com/solana-foundation/solana-web3.js/pull/3861) (`compileToV1Message`) ready, unmerged. Published rc.2 has legacy/v0 only |
+| `@solana/web3.js` 1.x | **1.99.0** (pending) | [PR #3866](https://github.com/solana-foundation/solana-web3.js/pull/3866) drafted, unmerged; latest published is 1.98.4. ⚠️ Read-only even then — 1.x never sends v1 |
 | `solders` (Python) | **0.29.0** | Read and send. Earlier releases have neither |
 | `solana-go` | unreleased | [PR #481](https://github.com/solana-foundation/solana-go/pull/481) |
 | `yellowstone-grpc-proto` (Rust) | **12.6.0** | First release whose generated code has `Message.config` (field 7) |
