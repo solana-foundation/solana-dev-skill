@@ -15,6 +15,13 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 - [Solana Documentation](https://solana.com/docs) (Core, RPC, Frontend, Programs)
 - [RPC API Reference](https://solana.com/docs/rpc)
 
+## Transaction v1 / Larger Transactions (SIMD-0385)
+- [Larger Transaction Sizes upgrade guide](https://solana.com/upgrades/larger-transaction-sizes)
+- [SIMD-0385 — transaction v1 format](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)
+- [SIMD-0296 — larger transactions](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0296-larger-transactions.md)
+- [transaction-v1-examples](https://github.com/solana-foundation/transaction-v1-examples) (runnable Rust, TypeScript, Python, Go — send, decode, read blocks, index over gRPC)
+- [Agave v4.2 release schedule](https://github.com/anza-xyz/agave/wiki/v4.2-Release-Schedule)
+
 ## Modern JS/TS SDK
 - [@solana/kit Repository](https://github.com/anza-xyz/kit)
 - [Solana Kit Docs](https://www.solanakit.com/) (createClient, plugins, getting started)

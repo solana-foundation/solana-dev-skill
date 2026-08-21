@@ -178,6 +178,10 @@ const triggerCases: TestCase[] = [
   { prompt: "Connect a Phantom wallet to my React app", expected: true },
   { prompt: "What are PDAs and how do they work?", expected: true },
   { prompt: "How does the Solana accounts model work?", expected: true },
+  { prompt: "How do I send a v1 transaction on Solana?", expected: true },
+  { prompt: "My indexer reports 0 priority fee for some transactions", expected: true },
+  { prompt: "getBlock is failing with maxSupportedTransactionVersion", expected: true },
+  { prompt: "What do I need to change to support 4096-byte Solana transactions?", expected: true },
   // ❌ Should NOT trigger
   { prompt: "Build me a React app", expected: false },
   { prompt: "How do I use the Claude API?", expected: false },

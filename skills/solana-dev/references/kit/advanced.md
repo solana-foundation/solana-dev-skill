@@ -48,6 +48,8 @@ const message = pipe(
 );
 ```
 
+For a `version: 1` message (4096-byte transactions, SIMD-0385) the pipeline is identical, plus one `setTransactionMessageConfig` step — and it is currently the **only** way to send v1, since the plugin client's planner rejects `version: 1`. Requires `@solana/kit` 8. See [transactions-v1.md](../transactions-v1.md).
+
 ### Fee Payer
 
 ```ts

@@ -280,3 +280,31 @@ If the `litesvm` npm native binary fails with GLIBC errors (verified on 0.5.0):
 ✅ Works: cargo build-sbf (Solana 2.2.16, platform-tools v1.48) on Debian 12
 ✅ Works: Anchor 0.30.1 built from source with Rust 1.93.0 on Debian 12
 ```
+
+---
+
+## Transaction v1 (SIMD-0385) Minimum Versions
+
+Full reference: [transactions-v1.md](./transactions-v1.md). Feature gate: `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL`, targeted for Agave v4.2 (tentative).
+
+| Component | Minimum for v1 | Notes |
+|---|---|---|
+| Anza CLI / Agave | **4.2.0** | v1 support and `maxSupportedTransactionVersion: 1`. Local test validator activates every feature at genesis |
+| Surfpool | **1.5** | Enables the gate by default |
+| `solana-message` (Rust) | **4.2.0** | `v1::Message` landed in 4.1.0; 4.2.0 adds the inherent `Message::serialize()` |
+| `solana-rpc-client` (Rust) | 4.2.1 | `max_supported_transaction_version: Some(1)` |
+| `@solana/kit` | **8.0.0** | 7.1.1 has the v1 codecs, config setters, and `maxSupportedTransactionVersion: 1`, but 8.0.0 is the first to *type* `createTransactionMessage({ version: 1 })` |
+| `@solana/kit-plugin-rpc` | — | Reads fine; **sending v1 throws** as of 0.15.0 — use the manual `pipe()` path |
+| `@solana/web3.js` (v3, `@rc`) | RC | `compileToV1Message` |
+| `@solana/web3.js` 1.x | **1.99.0** | ⚠️ **Read only** — cannot build, sign, serialize, or send v1. Pre-1.99.0 cannot read it at all |
+| `solders` (Python) | **0.29.0** | Read and send. Earlier releases have neither |
+| `solana-go` | unreleased | [PR #481](https://github.com/solana-foundation/solana-go/pull/481) |
+| `yellowstone-grpc-proto` (Rust) | **12.6.0** | First release whose generated code has `Message.config` (field 7) |
+| yellowstone-grpc geyser plugin | **15.1.1** | Earlier builds downgrade v1 to v0 before it reaches the wire |
+| `@triton-one/yellowstone-grpc` | **6.0.0** | 5.x drops field 7 — a `^5.0.9` pin loses every v1 budget |
+
+### ⚠️ Silent-failure pins
+
+- `yellowstone-grpc-client` 13.3.0 only *requires* `yellowstone-grpc-proto = "12.5.0"`, which has no field 7. **Pin `yellowstone-grpc-proto = "12.6.0"` directly** and build `--locked`, or the resolver hands you a proto crate that drops every v1 config without erroring.
+- yellowstone ships its Go client as pre-generated code that predates field 7. Generate stubs from the tag's `.proto` yourself.
+- Protobuf clients discard unknown fields silently. A stale stub decodes a v1 message as v0 with an empty compute budget — no error, just missing data.

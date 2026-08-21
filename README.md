@@ -75,6 +75,7 @@ skills/solana-dev/
     ├── common-errors.md             # Error message → solution mappings
     ├── confidential-transfers.md    # Confidential transfers (Token-2022 ZK)
     ├── rpc-quick-lookups.md         # One-shot RPC reads via curl
+    ├── transactions-v1.md           # Transaction v1 / larger transactions (SIMD-0385)
     ├── programs/
     │   ├── anchor.md                # Anchor program development
     │   ├── design-patterns.md       # Program architecture, CU/CPI limits, account lifecycle
@@ -94,6 +95,7 @@ Once installed, your agent will automatically use this skill when you ask about:
 - Solana dApp UI work (React / Next.js)
 - Wallet connection and signing flows
 - Transaction building, sending, and confirmation UX
+- Transaction v1 / larger transactions (SIMD-0385) — sending, reading, indexing
 - On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
 - Local testing (Surfpool, LiteSVM, Mollusk)

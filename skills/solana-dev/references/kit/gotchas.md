@@ -190,6 +190,82 @@ if (!account.exists) {
 
 ---
 
+## Transaction v1 Gotchas
+
+Full reference: [transactions-v1.md](../transactions-v1.md).
+
+### `version: 1` throws on the plugin client
+
+**Cause:** `rpcTransactionPlanner` in `@solana/kit-plugin-rpc` (0.15.0) defines the `version: 1` config shape for forward compatibility but rejects it at runtime.
+
+```ts
+// ❌ Runtime error: "Version 1 transactions are not yet supported by `rpcTransactionPlanner`."
+createClient().use(signer(s)).use(solanaRpc({ rpcUrl, transactionConfig: { version: 1 } }));
+
+// ✅ Fix: build v1 through the manual pipe with @solana/kit 8 directly
+const message = pipe(
+  createTransactionMessage({ version: 1 }),
+  m => setTransactionMessageFeePayerSigner(payer, m),
+  m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+  m => appendTransactionMessageInstruction(ix, m),
+  m => setTransactionMessageConfig({ computeUnitLimit: 20_000, loadedAccountsDataSizeLimit: 64 * 1024 }, m),
+);
+```
+
+### `createTransactionMessage({ version: 1 })` is a type error
+
+**Cause:** `@solana/kit` 7.x has the v1 codecs and config setters but not the builder types. 8.0.0 is the first release that types it.
+
+```bash
+# ✅ Fix
+pnpm add @solana/kit@^8.0.0
+```
+
+### v1 transaction fails with `MaxLoadedAccountsDataSizeExceeded`
+
+**Cause:** Unset v1 config fields budget **zero**, not a default. Only `heapSize` falls back (32 KiB).
+
+```ts
+// ❌ Zero CU and zero loaded-accounts bytes — cannot run
+createTransactionMessage({ version: 1 });
+
+// ✅ Fix: set both explicitly, or measure them by simulation
+const estimateResourceLimits = estimateResourceLimitsFactory({ rpc });
+const message = await estimateAndSetResourceLimitsFactory(estimateResourceLimits)(
+  fillTransactionMessageProvisoryResourceLimits(draft),
+);
+```
+
+The estimate has no margin, and an account created between simulation and send is a step change from 0 to 64+ bytes — add headroom, rounding data size up to the next 32 KiB page.
+
+### `setTransactionMessageComputeUnitPrice` type error on a v1 message
+
+**Cause:** v0 states the priority fee as a *price* in micro-lamports per CU; v1 states a *total* in lamports. Kit splits them and enforces the split by type.
+
+```ts
+// ❌ Type error on a v1 message
+setTransactionMessageComputeUnitPrice(microLamports(250_000n), v1Message);
+
+// ✅ Fix: total lamports, not a per-CU price
+setTransactionMessagePriorityFeeLamports(5_000n, v1Message);
+```
+
+`setTransactionMessageConfig` is the mirror image — v1-only, rejected on legacy/v0.
+
+### Priority fee or CU limit reads as 0 for some transactions
+
+**Cause:** Scanning instructions for the ComputeBudget program. On v1 those values live in `message.config`, so the scan finds nothing and reports zero **without erroring**.
+
+```ts
+// ✅ Fix: version-agnostic readers
+getTransactionMessageComputeUnitLimit(message);            // any version
+getTransactionMessagePriorityFeeLamports(v1Message);       // v1 only
+```
+
+Over gRPC, discriminate on `Message.config` presence — never on the `versioned` boolean, which is `true` for both v0 and v1.
+
+---
+
 ## Quick Reference
 
 | Gotcha | Fix |
@@ -208,3 +284,8 @@ if (!account.exists) {
 | Durable nonce send type error | `assertIsTransactionWithDurableNonceLifetime(signed)` |
 | `lifetimeConstraint` lost after deserialize | Re-attach `lifetimeConstraint` metadata manually |
 | RPC URL wrapper issues | Use raw URL strings instead of `devnet()`/`mainnet()` |
+| `version: 1` throws on plugin client | Build v1 with the manual `pipe()` and `@solana/kit` 8 |
+| `createTransactionMessage({ version: 1 })` type error | Upgrade to `@solana/kit` 8.0.0+ |
+| v1 `MaxLoadedAccountsDataSizeExceeded` | Unset v1 limits are **zero** — set CU limit and loaded-accounts size explicitly |
+| `setTransactionMessageComputeUnitPrice` rejected on v1 | Use `setTransactionMessagePriorityFeeLamports` (total lamports, not per-CU) |
+| Priority fee / CU limit reads as 0 | v1 keeps them in `message.config`, not ComputeBudget instructions |

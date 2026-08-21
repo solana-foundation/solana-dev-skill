@@ -14,6 +14,7 @@ description: Diagnose and fix common errors encountered when building on Solana,
 - [Testing Errors](#testing-errors)
 - [Anchor Version Migration Issues](#anchor-version-migration-issues)
 - [Miscellaneous Errors](#miscellaneous-errors)
+- [Transaction v1 Errors](#transaction-v1-errors)
 - [LiteSVM Errors](#litesvm-errors)
 - [Platform Tools Errors](#platform-tools-errors)
 - [edition2024 Crate Incompatibility (Cargo 1.84.0)](#edition2024-crate-incompatibility-cargo-1840)
@@ -410,6 +411,63 @@ workspace/
 ```
 
 ---
+
+## Transaction v1 Errors
+
+Full reference: [transactions-v1.md](./transactions-v1.md).
+
+### `MaxLoadedAccountsDataSizeExceeded` on a v1 transaction
+
+```
+Transaction failed: MaxLoadedAccountsDataSizeExceeded
+```
+
+**Cause:** Unset fields in a v1 `TransactionConfig` budget **zero**, not a runtime default. A v1 transaction with an empty config fails at account loading. Only `heapSize` falls back (32 KiB).
+
+**Fix:** Set `computeUnitLimit` and `loadedAccountsDataSizeLimit` explicitly, or measure them by simulation:
+
+```ts
+const estimateResourceLimits = estimateResourceLimitsFactory({ rpc });
+const message = await estimateAndSetResourceLimitsFactory(estimateResourceLimits)(
+  fillTransactionMessageProvisoryResourceLimits(draft),
+);
+```
+
+The estimate is the exact cost of one simulated run with no margin. Add headroom and round the data size up to the next 32 KiB page — an account created between simulation and send jumps from 0 to at least 64 bytes.
+
+### JSON-RPC error `-32015` / "Transaction version (1) is not supported"
+
+**Cause:** `maxSupportedTransactionVersion` is absent or set to `0` on `getTransaction`, `getBlock`, or `blockSubscribe`. The parameter is a ceiling, not a hint.
+
+**Fix:** Pass the JSON **integer** `1`. On `getBlock` this matters twice over — a single v1 transaction fails the *entire block*, with no partial result. `blockSubscribe` emits `block: null` and stops advancing.
+
+### `Version 1 transactions are not yet supported by rpcTransactionPlanner`
+
+**Cause:** `@solana/kit-plugin-rpc` (0.15.0) defines the `version: 1` planner config for forward compatibility but throws at runtime.
+
+**Fix:** Build v1 with `@solana/kit` 8 and the manual `pipe()` path. Keep plugin clients for legacy/v0.
+
+### `createTransactionMessage({ version: 1 })` is a type error
+
+**Cause:** `@solana/kit` 7.x carries the v1 codecs, config setters, and `maxSupportedTransactionVersion: 1`, but 8.0.0 is the first release whose types accept the v1 builder.
+
+**Fix:** `pnpm add @solana/kit@^8.0.0`.
+
+### v1 transaction rejected on devnet/testnet/mainnet, works locally
+
+**Cause:** The `enable_tx_v1` feature gate is not activated on that cluster. Local validators (Anza CLI 4.2+) and Surfpool 1.5+ activate every feature at genesis, so v1 works locally well before mainnet.
+
+**Fix:** Check the gate first:
+
+```bash
+solana -u m feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL
+```
+
+### Priority fee or compute unit limit reads as 0 in an indexer
+
+**Cause:** Deriving the budget by scanning instructions for the ComputeBudget program. On v1 those values live in the message config, so the scan finds nothing and reports zero **without erroring**. Over gRPC there is no version gate at all, so nothing signals the problem.
+
+**Fix:** Read `transactionConfig` (JSON-RPC) or `Message.config` (gRPC). Discriminate on `config` presence, never on the `versioned` boolean — it is `true` for both v0 and v1. Bump `yellowstone-grpc-proto` to 12.6.0+, the geyser plugin to 15.1.1+, or `@triton-one/yellowstone-grpc` to 6.0.0+; older stubs drop field 7 silently.
 
 ## LiteSVM Errors
 
