@@ -196,6 +196,7 @@ const triggerCases: TestCase[] = [
   { prompt: "Review my Python code", expected: false },
   { prompt: "How do I deploy to Vercel?", expected: false },
   { prompt: "Write a Rust CLI tool", expected: false },
+  { prompt: "My Ethereum API returns HTTP 402. How should I pay it?", expected: false },
 ];
 
 function triggerEvaluator(text: string) {
