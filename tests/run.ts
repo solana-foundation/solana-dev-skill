@@ -179,6 +179,9 @@ const triggerCases: TestCase[] = [
   { prompt: "What are PDAs and how do they work?", expected: true },
   { prompt: "How does the Solana accounts model work?", expected: true },
   { prompt: "How do I send a v1 transaction on Solana?", expected: true },
+  { prompt: "Add an x402 paywall to my Solana API", expected: true },
+  { prompt: "Build a Solana MPP endpoint that charges USDC and splits the payment", expected: true },
+  { prompt: "How should my agent pay for an HTTP 402 API on Solana?", expected: true },
   { prompt: "My indexer reports 0 priority fee for some transactions", expected: true },
   { prompt: "getBlock is failing with maxSupportedTransactionVersion", expected: true },
   { prompt: "What do I need to change to support 4096-byte Solana transactions?", expected: true },
@@ -193,6 +196,7 @@ const triggerCases: TestCase[] = [
   { prompt: "Review my Python code", expected: false },
   { prompt: "How do I deploy to Vercel?", expected: false },
   { prompt: "Write a Rust CLI tool", expected: false },
+  { prompt: "My Ethereum API returns HTTP 402. How should I pay it?", expected: false },
 ];
 
 function triggerEvaluator(text: string) {
