@@ -1,11 +1,11 @@
 ---
 name: solana-dev
-description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "fuzz my Solana program", "deploy to devnet", "send a v1 transaction", "support larger transactions", "fix maxSupportedTransactionVersion", or "explain Solana concepts" (rent, accounts, PDAs, CPIs). Also for program architecture — state layout, reducing compute units, throughput bottlenecks, instruction naming — and quick on-chain lookups via public RPC + curl (balance, transaction, token account). End-to-end playbook: wallet connection, Anchor/Pinocchio programs, Codama clients, Surfpool/LiteSVM/Mollusk testing, security review, and the v1 transaction format (SIMD-0385, 4096-byte transactions). Prefers @solana/kit plugin clients (createClient + .use(); kit 8 for v1), @solana/kit-plugin-wallet + @solana/react for wallets, web3.js v3 (RC) as the legacy migration target, and Surfpool for local networks.
+description: Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "deploy to devnet", "send a v1 transaction", "add a Solana x402 or MPP paywall", "build a Solana agent-paid API", or "explain Solana concepts" (rent, accounts, PDAs, CPIs). Also for program architecture, transaction sizing, security review, and quick on-chain lookups via public RPC + curl. End-to-end playbook covers Kit wallet/client work, Anchor/Pinocchio programs, Codama clients, Surfpool/LiteSVM/Mollusk testing, HTTP 402 payments, and transaction v1 (SIMD-0385). Prefers @solana/kit plugin clients, @solana/kit-plugin-wallet + @solana/react for wallets, the Foundation's pay/pay-kit stack for agentic payments, web3.js v3 (RC) for legacy migration, and Surfpool for local networks.
 license: MIT
 compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: "2.4.0"
+  version: "2.5.0"
 ---
 
 # Solana Development Skill (Kit-first)
@@ -15,6 +15,7 @@ Use this Skill when the user asks for:
 - Solana dApp UI work (React / Next.js)
 - Wallet connection + signing flows
 - Transaction building / sending / confirmation UX
+- Agent-paid APIs and HTTP 402 paywalls (pay, pay-kit, x402, MPP)
 - Transaction v1 / larger transactions (SIMD-0385) — sending, reading, indexing
 - On-chain program development (Anchor or Pinocchio)
 - Program architecture — state layout, PDA seed conventions, naming, parallelization, cranks, vault topology
@@ -101,11 +102,13 @@ When solving a Solana task:
 - Program layer (+ IDL)
 - Testing/CI layer
 - Infra (RPC/indexing/monitoring)
+- Agentic HTTP payments (paid API consumption or paywall implementation)
 - **Quick on-chain lookup** (one-shot reads: balance, tx, token account) — use public RPC + `curl`, see [rpc-quick-lookups.md](references/rpc-quick-lookups.md). Don't scaffold a project for a single read.
 
 ### 2. Pick the right building blocks
 - UI: Kit plugin client (`walletSigner` + `solanaRpc`) + `@solana/react`.
 - Scripts/backends: @solana/kit directly.
+- Paid HTTP APIs: `pay` for consumption; `pay-kit` for x402 or MPP server/client integration. See [payments.md](references/payments.md).
 - Legacy web3.js v1 code or dependency: route via [kit-web3-interop.md](references/kit-web3-interop.md) (migration skill for v1→v3; keep class types in adapter modules).
 - High-performance programs: Pinocchio over Anchor.
 

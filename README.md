@@ -67,7 +67,7 @@ skills/solana-dev/
     ├── kit-web3-interop.md          # Legacy web3.js routing (v3 RC + migration skill)
     ├── testing.md                   # Testing (Surfpool/LiteSVM/Mollusk)
     ├── idl-codegen.md               # IDL and client generation
-    ├── payments.md                  # Payments (Kit, Solana Pay, Kora)
+    ├── payments.md                  # Payments (Kit, Solana Pay, Kora, pay, x402/MPP)
     ├── security.md                  # Security vulnerabilities & prevention
     ├── concepts.md                  # Runtime concepts (rent, PDAs, entrypoint, wire format)
     ├── resources.md                 # Curated reference links
@@ -95,6 +95,7 @@ Once installed, your agent will automatically use this skill when you ask about:
 - Solana dApp UI work (React / Next.js)
 - Wallet connection and signing flows
 - Transaction building, sending, and confirmation UX
+- Agent-paid APIs and HTTP 402 paywalls with pay, pay-kit, x402, or MPP
 - Transaction v1 / larger transactions (SIMD-0385) — sending, reading, indexing
 - On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
