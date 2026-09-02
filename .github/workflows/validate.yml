@@ -1,0 +1,42 @@
+name: Validate skills
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Anthropic's quick_validate.py from anthropics/skills, vendored at
+      # scripts/validate-skill.py so a release elsewhere cannot turn an unrelated PR red. The
+      # wrapper adds the checks it lacks, such as the skill name matching its directory.
+      # PyYAML is pinned for the same reason the script is vendored.
+      - name: Validate against the Agent Skills spec
+        run: |
+          pip install pyyaml==6.0.3
+          ./scripts/validate-skills.sh
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # What consumers actually run: `npx skills add` from create-solana-dapp templates. Its
+      # YAML parser is stricter than PyYAML in places (an unquoted `: ` inside the description
+      # once broke installation of the whole skill), so exercise it too — into a throwaway
+      # directory — and fail if it installs fewer skills than the repo ships.
+      - name: Install skills like a consumer would
+        run: |
+          expected=$(ls -d skills/*/ | wc -l)
+          tmp=$(mktemp -d)
+          (cd "$tmp" && npx -y skills add "$GITHUB_WORKSPACE" --skill "*" -y)
+          installed=$(ls -d "$tmp"/.agents/skills/*/ 2>/dev/null | wc -l)
+          echo "installed $installed of $expected skills"
+          test "$installed" -eq "$expected"
