@@ -186,6 +186,7 @@ Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local
 - Payments: [payments.md](references/payments.md)
 - Confidential transfers: [confidential-transfers.md](references/confidential-transfers.md)
 - Security checklist: [security.md](references/security.md)
+- Verifiable autonomous agents (evidence artifacts for W009/W011): [verifiable-agents.md](references/verifiable-agents.md)
 - Reference links: [resources.md](references/resources.md)
 - **Version compatibility:** [compatibility-matrix.md](references/compatibility-matrix.md)
 - **Common errors & fixes:** [common-errors.md](references/common-errors.md)
