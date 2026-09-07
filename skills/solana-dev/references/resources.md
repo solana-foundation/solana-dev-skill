@@ -110,3 +110,4 @@ Well-built production programs to read for structure and conventions:
 - [Agent Skills Specification](https://agentskills.io/specification)
 - [skills.sh (skill discovery + installer)](https://www.skills.sh/)
 - [web3.js v1→v3 migration skill](https://github.com/solana-foundation/solana-web3.js/tree/v3.x/skills/web3js-v1-to-v3-migration)
+- [SODAX Builders MCP](https://builders.sodax.com/mcp) — MCP server exposing the SODAX SDK, API data, and integration guides for building cross-chain DeFi (swaps, lending, staking) on Solana. Source: [icon-project/sodax-mcp-server](https://github.com/icon-project/sodax-mcp-server), SDK: [icon-project/sodax-sdks](https://github.com/icon-project/sodax-sdks), Solana integration guide: [sodax.com/solana](https://sodax.com/solana)
