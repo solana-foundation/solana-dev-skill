@@ -1,62 +1,101 @@
 ---
 title: Transaction v1 (SIMD-0385 / SIMD-0296)
-description: The v1 transaction format that raises the size limit to 4096 bytes — how to check activation status, read and index v1 transactions without breaking, and build and send them with @solana/kit 8 or the Rust 4.2 crates.
+description: The v1 transaction format that raises the size limit to 4096 bytes — the default for new code. Send it through @solana/kit plugin clients (transactionConfig version 1), read and index it without breaking, and fall back to manual pipe() or the Rust 4.x crates when needed.
 ---
 
 # Transaction v1 — Larger Transactions
 
 The `v1` transaction format ([SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)) raises the per-transaction size limit from 1232 to 4096 bytes ([SIMD-0296](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0296-larger-transactions.md)). It unlocks ZK proofs, large multisigs, and signature schemes like BLS in a single atomic transaction.
 
-`legacy` and `v0` keep working unchanged. **Sending v1 is opt-in. Reading it is not** — once v1 transactions land onchain, any RPC or gRPC consumer that hasn't opted in breaks or silently misreports.
+**v1 is the default for new code in this skill.** It activated on mainnet on 2026-09-15 (Agave 4.2.2). Emit v1 unless a wallet or downstream consumer cannot accept it. Readers must still handle legacy and v0 transactions.
 
-> **Pre-release.** Targeted for mainnet activation in Agave v4.2 ([release schedule](https://github.com/anza-xyz/agave/wiki/v4.2-Release-Schedule)), which is explicitly tentative. Always check the feature gate before assuming v1 works on a cluster — see [Checking activation status](#checking-activation-status). Everything below is reproducible locally today.
+**Sending v1 is a config choice. Reading it is not optional** — any RPC or gRPC consumer that hasn't opted in breaks or silently misreports on the v1 transactions now landing in every block.
 
 ## Contents
 
-- [Checking activation status](#checking-activation-status)
+- [Sending v1 through plugin clients (default)](#sending-v1-through-plugin-clients-default)
+- [Wallets](#wallets)
 - [What v1 changes](#what-v1-changes)
 - [Reading transactions and blocks (breaking)](#reading-transactions-and-blocks-breaking)
 - [Indexing (silently breaking)](#indexing-silently-breaking)
-- [Sending v1 transactions](#sending-v1-transactions)
+- [Sending v1 manually with `pipe()`](#sending-v1-manually-with-pipe)
 - [Sizing the resource limits](#sizing-the-resource-limits)
 - [Kit setter routing by version](#kit-setter-routing-by-version)
-- [Plugin clients cannot build v1 yet](#plugin-clients-cannot-build-v1-yet)
 - [Library support](#library-support)
+- [Checking activation status](#checking-activation-status)
 - [Local testing](#local-testing)
 - [Cheat sheet](#cheat-sheet)
-- [Pre-activation checklist](#pre-activation-checklist)
+- [Migration checklist](#migration-checklist)
 
-## Checking activation status
+## Sending v1 through plugin clients (default)
 
-The feature gate is `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL` (`enable_tx_v1`).
-
-```bash
-solana -u m feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL   # -u d / -u t / -u l
-```
-
-Over JSON-RPC, the account is a bincode `Option<u64>` holding the activation slot — `None` (and an absent account) both mean v1 would be rejected:
-
-```bash
-curl -s https://api.devnet.solana.com -X POST -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL",{"encoding":"base64"}]}'
-```
-
-In `@solana/kit`, decode it and assert up front so an inactive gate names itself instead of surfacing as a rejected transaction whose error says nothing about the version:
+The skill's default client — `createClient().use(signer(…)).use(solanaRpc(…))` — builds v1 when its `transactionConfig` says so. `@solana/kit-plugin-rpc` 0.19+ and `@solana/kit-plugin-litesvm` 0.19+ plan v1 natively; the transaction version is a property of the client assembly, not of each call site.
 
 ```ts
-import { address, getBase64Encoder, getOptionDecoder, getU64Decoder, isSome } from '@solana/kit';
+import { systemProgram } from '@solana-program/system';
+import { createClient, lamports } from '@solana/kit';
+import { solanaRpc } from '@solana/kit-plugin-rpc';
+import { signer } from '@solana/kit-plugin-signer';
 
-const ENABLE_TX_V1_FEATURE = address('txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL');
-const featureDecoder = getOptionDecoder(getU64Decoder());
+const client = createClient()
+  .use(signer(mySigner))
+  .use(solanaRpc({
+    rpcUrl,
+    transactionConfig: { version: 1, priorityFeeLamports: lamports(5_000n) },
+  }))
+  .use(systemProgram());
 
-async function isV1Active(rpc): Promise<boolean> {
-  const { value: account } = await rpc.getAccountInfo(ENABLE_TX_V1_FEATURE, { encoding: 'base64' }).send();
-  if (account === null) return false;
-  return isSome(featureDecoder.decode(getBase64Encoder().encode(account.data[0])));
-}
+// Every planned transaction is v1: the budget lives in message.config, not in
+// ComputeBudget instructions, and the size limit is 4096 bytes.
+const { context } = await client.system.instructions
+  .transferSol({ amount: lamports(10_000_000n), destination, source: client.payer })
+  .sendTransaction();
 ```
 
-**Do this check before building v1 in any code that runs against devnet/testnet/mainnet.** Once activation is complete on mainnet this section can be dropped.
+> **Do not add ComputeBudget instructions to a v1 transaction.** They are no-ops on v1: they do not set resource limits or priority fees, but still consume 150 CU and an instruction slot. Use `transactionConfig` with a plugin client, or the version-aware Kit setters and resource estimators on a manual pipeline.
+
+`transactionConfig` is a discriminated union on `version`:
+
+| Field | `version: 'legacy' \| 0` (default when omitted) | `version: 1` |
+|---|---|---|
+| Priority fee | `microLamportsPerComputeUnit` — a per-CU **price**, paid via a `SetComputeUnitPrice` instruction | `priorityFeeLamports` — a **total** in lamports, written to `message.config` |
+| Compute unit limit | provisory `SetComputeUnitLimit` instruction, estimated by the executor | provisory `config.computeUnitLimit`, estimated by the executor |
+| Loaded accounts data size | runtime default (64 MiB) | provisory `config.loadedAccountsDataSizeLimit`, estimated by the executor |
+| `estimateResourceLimits` | `true` by default | `true` by default — **keep it on**; an unset v1 limit is zero, not a default |
+
+The planner reserves both limits; the executor estimates them with one simulation. A planned v1 message therefore contains provisory zeroes, while the sent transaction contains measured values. Keep `estimateResourceLimits` enabled unless you deliberately set both limits yourself. Disabling it without setting them causes `MaxLoadedAccountsDataSizeExceeded`.
+
+`heapSize` has no planner option. A transaction that needs a larger heap goes through `setTransactionMessageConfig` on a message you plan yourself — see [Sending v1 manually with `pipe()`](#sending-v1-manually-with-pipe).
+
+**LiteSVM**'s planner writes the *maximum* limits (1.4M CU, 64 MiB) by default instead of estimating, and lets you override them:
+
+```ts
+import { litesvm } from '@solana/kit-plugin-litesvm';
+
+const client = await createClient()
+  .use(generatedSigner())
+  .use(litesvm({ transactionConfig: { version: 1, computeUnitLimit: 200_000 } }))
+  .use(airdropSigner(lamports(1_000_000_000n)));
+```
+
+**Surfpool**'s `surfpool()` plugin forwards `transactionConfig` to the `solanaLocalRpc` it wraps, so `surfpool({ transactionConfig: { version: 1 } })` plans v1 when the resolved `@solana/kit-plugin-rpc` is 0.19+. `@solana/surfpool` 1.5.0 still declares `@solana/kit ^7` and `@solana/kit-plugin-rpc ^0.15` as optional peers, so expect a peer-range warning until it re-pins — see [surfpool/kit-plugin.md](surfpool/kit-plugin.md).
+
+`client.rpc` is an ordinary kit RPC, so reading the transaction back still needs `maxSupportedTransactionVersion: 1` and, over 1232 bytes, `encoding: 'base64'`.
+
+The full send-and-read-back and confidential-transfer examples on a plugin client live in [`transaction-v1-examples/ts/kit-plugins`](https://github.com/solana-foundation/transaction-v1-examples/tree/main/ts/kit-plugins).
+
+## Wallets
+
+A wallet-backed client (`walletSigner()` from `@solana/kit-plugin-wallet` 0.20+) reports what the connected wallet can sign. `SolanaTransactionVersion` in `@solana/wallet-standard-features` 1.5+ includes `1`, so the check is typed:
+
+```ts
+const { connected } = client.wallet.getState();
+const canSendV1 = connected?.supportedTransactionVersions.has(1) ?? false;
+```
+
+In React, the same set is on the value returned by `useConnectedWallet(client)`. The set is the **intersection** of the versions the wallet accepts across every signing feature it exposes (`signTransaction` and `signAndSendTransaction`), so a version is reported only if every path the signer might take accepts it. A wallet that predates versioned transactions reports `Set(['legacy'])` — test for membership, not emptiness.
+
+If `has(1)` is `false`, the wallet rejects a v1 signing request. Keep a `version: 0` client (or a version-0 `transactionConfig` on a second `solanaRpc` plugin) for those users rather than failing the send; the transaction has to fit in 1232 bytes on that path. See [frontend.md](frontend.md#wallet-connection) for the gating pattern, and [`transaction-v1-examples/ts/wallet-table`](https://github.com/solana-foundation/transaction-v1-examples/tree/main/ts/wallet-table) for a live table of which installed wallets advertise `1`.
 
 ## What v1 changes
 
@@ -184,9 +223,11 @@ match (&message.config, message.versioned) {
                                         5,000 lamports   // the v1 equivalent
 ```
 
-## Sending v1 transactions
+## Sending v1 manually with `pipe()`
 
-**Requires `@solana/kit` 8.0.0+.** The v1 codecs and config setters landed in 7.1.1, but 8.0.0 is the first release whose types accept `createTransactionMessage({ version: 1 })`, which is what lets a v1 message go through the same `pipe` as a legacy or v0 one.
+Use the manual path for durable nonces, offline or multi-party signing, `heapSize`, hand-tuned budgets, or a custom `TransactionPlanner`. It requires `@solana/kit` 8.0.0+; earlier versions do not type `createTransactionMessage({ version: 1 })`.
+
+Everything the plugin client did for you is now your job: set both resource limits (or estimate them — see [Sizing the resource limits](#sizing-the-resource-limits)), keep ComputeBudget instructions out, and simulate and send over base64.
 
 ```ts
 import { getTransferSolInstruction } from '@solana-program/system';
@@ -243,7 +284,7 @@ await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions })(transaction, {
 const signature = getSignatureFromTransaction(transaction);
 ```
 
-In Rust (`solana-message` 4.2+), the config is a const-buildable value passed straight into compilation:
+In Rust (`solana-message` 4.x), the config is a const-buildable value passed straight into compilation:
 
 ```rust
 use solana_message::{v1, VersionedMessage};
@@ -269,7 +310,7 @@ In legacy and v0, omitting a resource limit gets you a runtime default. In v1, o
 | Loaded accounts data size | 64 MiB | **0 bytes** |
 | Heap size | 32 KiB | 32 KiB (the one field that does default) |
 
-A v1 transaction with an empty config fails at account loading with `MaxLoadedAccountsDataSizeExceeded`. **Always set the compute unit limit and loaded accounts data size limit explicitly.**
+A v1 transaction with an empty config fails at account loading with `MaxLoadedAccountsDataSizeExceeded`. **Estimate both limits with Kit by default.** Set them manually only when you have a measured, application-specific reason.
 
 ### Three more sending changes
 
@@ -279,7 +320,7 @@ A v1 transaction with an empty config fails at account loading with `MaxLoadedAc
 
 ## Sizing the resource limits
 
-Simulate once with both limits maxed, then write the measured values back. Kit 8 does this in three functions:
+Use Kit's resource estimator instead of guessing limits. It simulates once with both limits maxed, then writes the measurements back:
 
 ```ts
 import {
@@ -325,35 +366,49 @@ Matching readers: `getTransactionMessageComputeUnitLimit`, `getTransactionMessag
 
 `setTransactionMessageConfig({ computeUnitLimit: undefined }, m)` unsets a field; unsetting the last one removes `config` from the message. `areV1ConfigsEqual` and `isV1ConfigEmpty` treat an absent field and an explicit zero as distinct.
 
-## Plugin clients cannot build v1 yet
-
-⚠️ The skill's default path — `createClient().use(signer(…)).use(solanaRpc(…))` then `client.sendTransactions(…)` — **cannot send v1 today.** `solanaRpc` forwards its `transactionConfig` to `rpcTransactionPlanner`, and that planner defines the `version: 1` shape for forward compatibility but **throws at runtime** (still true as of 0.18.0, the current release):
-
-```
-Version 1 transactions are not yet supported by `rpcTransactionPlanner`.
-Use version 0 or legacy transactions for now.
-```
-
-For v1, drop to the manual `pipe()` path shown above with `@solana/kit` 8 directly. Keep using plugin clients for everything else. Re-check `@solana/kit-plugin-rpc` before assuming this is still true — the type-level branch (`TransactionPlannerConfigV1`, reached as `solanaRpc({ rpcUrl, transactionConfig: { version: 1, priorityFeeLamports } })`) exists so enabling it later is not a breaking change.
-
 ## Library support
 
 | Library | Status |
 |---|---|
-| `@solana/kit` | **8.0.0+** — full support. 7.1.1 has the codecs, setters, and `maxSupportedTransactionVersion: 1`, but not the types for `createTransactionMessage({ version: 1 })` |
-| `@solana/kit-plugin-rpc` | Read paths fine; **sending v1 throws** — see above |
-| `@solana/web3.js@rc` (v3) | Landing in **`3.0.0-rc.3`** — [PR #3861](https://github.com/solana-foundation/solana-web3.js/pull/3861) (`compileToV1Message`) is ready but unmerged. ⚠️ The currently published `3.0.0-rc.2` exports only `compileToLegacyMessage` / `compileToV0Message`, so pin rc3 once it ships rather than `@rc` |
-| `@solana/web3.js` 1.x | Read support landing in **`1.99.0`** — [PR #3866](https://github.com/solana-foundation/solana-web3.js/pull/3866), drafted but unmerged; latest published is `1.98.4`. ⚠️ Even on 1.99.0 this is **read only** — 1.x will never build, sign, serialize, or send v1. Migrate to kit 8 for that |
-| Rust `solana-*` | Ready. `v1::Message` landed in `solana-message` 4.1.0; use 4.2.x (adds the inherent `Message::serialize()`) |
+| `@solana/kit` | **8.0.0+** (current 8.3.0) — full support. 7.1.1 has the codecs, setters, and `maxSupportedTransactionVersion: 1`, but not the types for `createTransactionMessage({ version: 1 })` |
+| `@solana/kit-plugin-rpc` | **0.19.0+** — `solanaRpc({ transactionConfig: { version: 1 } })` plans, estimates, and sends v1. 0.18 and earlier throw `Version 1 transactions are not yet supported by rpcTransactionPlanner` |
+| `@solana/kit-plugin-litesvm` | **0.19.0+** — `litesvm({ transactionConfig: { version: 1 } })`; writes maximum limits instead of estimating |
+| `@solana/kit-plugin-wallet` | **0.20.0+** — `connected.supportedTransactionVersions` typed to include `1` (via `@solana/wallet-standard-features` 1.5) |
+| `@solana/web3.js@rc` (v3) | **`3.0.0-rc.3`** — `compileToV1Message`, send and read |
+| `@solana/web3.js` 1.x | **`1.99.0`** — **read only**. 1.x never builds, signs, serializes, or sends v1; migrate to kit 8 for that |
+| Rust `solana-*` | **4.x** (`solana-message` 4.1.0 added `v1::Message`; 4.2.x adds the inherent `Message::serialize()`). Anchor 1.1.x still pins the 3.x crate line for *programs*; the 4.x requirement is client-side |
 | Python `solders` | 0.29.0+ — read and send. Earlier releases have neither |
 | Go `solana-go` | Unreleased — [PR #481](https://github.com/solana-foundation/solana-go/pull/481) adds `solana.TransactionConfig`, `solana.MessageVersionV1`, and `solana.TransactionV1Config` |
-| Anza CLI / Agave | 4.2.0+ for v1 and `maxSupportedTransactionVersion: 1` |
+| Anza CLI / Agave | **4.2.2** is the mainnet activation release; 4.2.0+ for v1 and `maxSupportedTransactionVersion: 1` |
 
 Runnable examples in all four languages — sending, decoding, reading blocks, indexing over gRPC, plus offline and live tests: [`solana-foundation/transaction-v1-examples`](https://github.com/solana-foundation/transaction-v1-examples).
 
+## Checking activation status
+
+v1 is live on mainnet, devnet, testnet, and every local network that ships with Agave 4.2+. The feature gate is `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL` (`enable_tx_v1`); check it only when targeting a private cluster or an older snapshot:
+
+```bash
+solana -u m feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL   # -u d / -u t / -u l
+```
+
+Over JSON-RPC, the account is a bincode `Option<u64>` holding the activation slot — `None` (and an absent account) both mean v1 would be rejected:
+
+```ts
+import { address, getBase64Encoder, getOptionDecoder, getU64Decoder, isSome } from '@solana/kit';
+
+const ENABLE_TX_V1_FEATURE = address('txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL');
+const featureDecoder = getOptionDecoder(getU64Decoder());
+
+async function isV1Active(rpc): Promise<boolean> {
+  const { value: account } = await rpc.getAccountInfo(ENABLE_TX_V1_FEATURE, { encoding: 'base64' }).send();
+  if (account === null) return false;
+  return isSome(featureDecoder.decode(getBase64Encoder().encode(account.data[0])));
+}
+```
+
 ## Local testing
 
-Both local networks enable the feature at genesis, so all of this is reproducible before mainnet activation:
+Both local networks enable the feature at genesis:
 
 - `solana-test-validator` (Anza CLI **4.2+**) — activates every feature at genesis
 - **Surfpool 1.5+** — see [surfpool/overview.md](surfpool/overview.md)
@@ -366,9 +421,10 @@ solana -u l feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL
 
 ## Cheat sheet
 
-| Task | `@solana/kit` 8 | Rust (`solana-*` 4.2) |
+| Task | `@solana/kit` 8 | Rust (`solana-*` 4.x) |
 |---|---|---|
-| Build a v1 message | `createTransactionMessage({ version: 1 })` | `v1::Message::try_compile_with_config` |
+| Send v1 from a plugin client | `solanaRpc({ transactionConfig: { version: 1, priorityFeeLamports } })` then `client.sendTransaction(…)` | — |
+| Build a v1 message by hand | `createTransactionMessage({ version: 1 })` | `v1::Message::try_compile_with_config` |
 | Set the whole budget | `setTransactionMessageConfig` | `v1::TransactionConfig::empty().with_*(…)` |
 | Set one field | `setTransactionMessage{ComputeUnitLimit,LoadedAccountsDataSizeLimit,HeapSize,PriorityFeeLamports}` | `.with_{compute_unit_limit,loaded_accounts_data_size_limit,heap_size,priority_fee}(…)` |
 | Reserve limit space before simulating | `fillTransactionMessageProvisoryResourceLimits` | — |
@@ -377,6 +433,7 @@ solana -u l feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL
 | Decode a transaction off the wire | `getTransactionDecoder` → `getCompiledTransactionMessageDecoder` → `decompileTransactionMessage` | `VersionedTransaction` deserialization, or `EncodedTransaction::decode` |
 | Read the config back | `message.config` on the v1 arm of `TransactionMessage` | `VersionedMessage::V1(m) => m.config` |
 | Opt in to reading v1 | `maxSupportedTransactionVersion: 1` | `max_supported_transaction_version: Some(1)` |
+| Check a wallet can sign v1 | `connected.supportedTransactionVersions.has(1)` | — |
 | Compare two configs | `areV1ConfigsEqual`, `isV1ConfigEmpty` | — |
 
 Kit keeps `V1TransactionMessage` internal; pull the v1 arm out of the exported union:
@@ -387,7 +444,7 @@ type V1TransactionMessage = Extract<TransactionMessage, { version: 1 }>;
 
 Decompiling a v1 compiled message fetches no accounts, since v1 cannot use address lookup tables.
 
-## Pre-activation checklist
+## Migration checklist
 
 **If you read transactions:**
 
@@ -395,16 +452,16 @@ Decompiling a v1 compiled message fetches no accounts, since v1 cannot use addre
 - Audit for ComputeBudget instruction scanning; read `transactionConfig` instead, and persist it — it has no v0 equivalent.
 - Treat `blockSubscribe`'s `block: null` with an error as a failure, not an empty block.
 - Regenerate protobuf stubs and discriminate on `config` presence, never on the `versioned` boolean.
-- Move to Agave 4.2.x-generation client dependencies. On web3.js 1.x, upgrade to 1.99.0 once it ships — it reads v1 but cannot send it, so anything that *sends* needs `@solana/kit` 8 or web3.js v3 (rc3+).
+- Move to Agave 4.2.x-generation client dependencies (`solana-*` 4.x crates). On web3.js 1.x, upgrade to 1.99.0 — it reads v1 but cannot send it, so anything that *sends* needs `@solana/kit` 8 or web3.js v3 (rc.3+).
 
 **If you send transactions:**
 
-- Check the feature gate before targeting a live cluster.
-- Set compute unit limit and loaded accounts data size explicitly — the defaults are zero.
-- Estimate both from one simulation with both limits maxed; round the data size up to the next 32 KiB page and add margin.
-- Strip ComputeBudget instructions. Convert priority fees from micro-lamports-per-CU to total lamports. Confirm no address lookup table dependency and no duplicate account addresses.
-- Pass `encoding: 'base64'` when simulating and sending.
-- On kit, use 8.0.0+ and the manual `pipe()` path, not the plugin client's `sendTransaction`.
+- On kit, upgrade to `@solana/kit` 8.3+ and `@solana/kit-plugin-rpc` 0.19+, then add `transactionConfig: { version: 1 }` to the RPC plugin. Swap `microLamportsPerComputeUnit` for `priorityFeeLamports` (a total, not a price). Leave `estimateResourceLimits` on.
+- In wallet apps, gate on `connected.supportedTransactionVersions.has(1)` and keep a v0 client for wallets that have not shipped v1.
+- On the manual `pipe()` path, use Kit's resource estimator for the compute and loaded-accounts-data limits. Set values manually only when you have stable measurements or need a deliberate cap. The defaults are zero.
+- Strip ComputeBudget instructions. Confirm no address lookup table dependency and no duplicate account addresses.
+- Pass `encoding: 'base64'` when simulating and sending by hand.
+- Check the feature gate only when targeting a private cluster or an older snapshot.
 
 **If you operate infrastructure:**
 
@@ -417,4 +474,5 @@ Decompiling a v1 compiled message fetches no accounts, since v1 cannot use addre
 - [SIMD-0296 — larger transactions](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0296-larger-transactions.md)
 - [Larger Transaction Sizes upgrade guide](https://solana.com/upgrades/larger-transaction-sizes)
 - [`transaction-v1-examples`](https://github.com/solana-foundation/transaction-v1-examples) — runnable Rust, TypeScript, Python, and Go
-- [Agave v4.2 release schedule](https://github.com/anza-xyz/agave/wiki/v4.2-Release-Schedule)
+- [`transaction-v1-examples/ts/kit-plugins`](https://github.com/solana-foundation/transaction-v1-examples/tree/main/ts/kit-plugins) — v1 through a plugin client
+- [Agave releases](https://github.com/anza-xyz/agave/releases)

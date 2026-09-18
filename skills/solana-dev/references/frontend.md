@@ -12,9 +12,9 @@ description: Build React and Next.js Solana apps with a Kit plugin client, Walle
 - Transaction sending that is observable, cancelable, and UX-friendly
 
 ## Recommended dependencies
-- `@solana/kit` (v7+)
-- `@solana/kit-plugin-rpc`, `@solana/kit-plugin-wallet` (wallet React hooks ship in `@solana/kit-plugin-wallet/react`)
-- `@solana/react` (v7+ — Kit client bindings: `ClientProvider`, `useClient`, data hooks)
+- `@solana/kit` (8.3+)
+- `@solana/kit-plugin-rpc` (0.19+ — plans transaction v1), `@solana/kit-plugin-wallet` (0.20+ — reports wallet v1 support; wallet React hooks ship in `@solana/kit-plugin-wallet/react`)
+- `@solana/react` (8+ — Kit client bindings: `ClientProvider`, `useClient`, data hooks)
 - `swr` (peer dep of `@solana/react/swr`) or `@tanstack/react-query` (peer dep of `@solana/react/query`) — pick whichever your app already uses
 - `@solana-program/system`, `@solana-program/token`, `@your-program/codama-client` etc. (only what you need)
 
@@ -44,9 +44,10 @@ const rpcUrl =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? 'https://api.devnet.solana.com';
 
 // One client for the whole app. The connected wallet fills payer + identity.
+// version: 1 — 4096-byte transactions, budget in message.config (see transactions-v1.md).
 export const client = createClient()
   .use(walletSigner({ chain: 'solana:devnet' }))
-  .use(solanaRpc({ rpcUrl }));
+  .use(solanaRpc({ rpcUrl, transactionConfig: { version: 1 } }));
 
 // Export the client type so every useClient<AppClient>() call in the app
 // is fully typed (rpc, wallet, sendTransaction, ...).
@@ -91,6 +92,9 @@ function WalletButton({ client }: { client: AppClient }) {
   return (
     <div>
       <p>Connected: {connected.account.address}</p>
+      {!connected.supportedTransactionVersions.has(1) && (
+        <p>Update your wallet to send larger (v1) transactions.</p>
+      )}
       <button onClick={() => disconnect()}>Disconnect</button>
     </div>
   );
@@ -106,9 +110,18 @@ export const Wallet = ({ client }: { client: AppClient }) => (
 
 Outside React (or for imperative flows), the same state is on the client: `client.wallet.getState()` returns `{ wallets, connected, status }` and `client.wallet.connect(wallet)` / `disconnect()` / `selectAccount(account)` drive the connection.
 
+### Transaction version support
+
+`connected.supportedTransactionVersions` (a `ReadonlySet<'legacy' | 0 | 1>` from `@solana/kit-plugin-wallet` 0.20+) says what the connected wallet will sign. **Check `has(1)` before sending from a `version: 1` client** — a wallet that has not shipped v1 rejects the signing request. Two ways to handle a `false`:
+
+- Show an upgrade prompt (as above) and keep the action disabled. Simplest; right when your transactions genuinely need 4096 bytes.
+- Keep a second client with `transactionConfig: { version: 0 }` and route those users through it. Right when the transactions also fit in 1232 bytes.
+
+The set is the intersection across the wallet's signing features, so a version appears only when every signing path accepts it. Wallets that predate versioned transactions report `Set(['legacy'])` — test membership, not emptiness. See [transactions-v1.md](transactions-v1.md#wallets).
+
 ## Sending transactions
 
-With the wallet plugin installed, `client.sendTransaction` plans, asks the wallet to sign, and sends. Wrap it in `useAction` from `@solana/react` so pending/error state, abort-on-resend, and stale-while-revalidate come for free instead of hand-rolled `useState`:
+With the wallet plugin installed, `client.sendTransaction` plans a v1 transaction (per the client's `transactionConfig`), estimates its resource limits, asks the wallet to sign, and sends. Wrap it in `useAction` from `@solana/react` so pending/error state, abort-on-resend, and stale-while-revalidate come for free instead of hand-rolled `useState`:
 
 ```tsx
 'use client';
@@ -219,8 +232,10 @@ For Next.js: keep server components server-side; only leaf components that call 
 - Disable inputs while a transaction is pending
 - Provide a signature immediately after send
 - Track confirmation states (processed/confirmed/finalized) based on UX need
+- Gate v1 sends on `connected.supportedTransactionVersions.has(1)`; show an upgrade prompt otherwise
 - Show actionable errors:
   - user rejected signing
+  - wallet does not support transaction v1 (upgrade the wallet)
   - insufficient SOL for fees / rent
   - blockhash expired / dropped
   - account already in use / already initialized

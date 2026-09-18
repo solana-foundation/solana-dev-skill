@@ -1,21 +1,21 @@
 ---
 name: solana-dev
-description: 'Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "fuzz my Solana program", "deploy to devnet", "send a v1 transaction", "support larger transactions", "fix maxSupportedTransactionVersion", or "explain Solana concepts" (rent, accounts, PDAs, CPIs). Also for program architecture — state layout, reducing compute units, throughput bottlenecks, instruction naming — and quick on-chain lookups via public RPC + curl (balance, transaction, token account). End-to-end playbook: wallet connection, Anchor/Pinocchio programs, Codama clients, Surfpool/LiteSVM/Mollusk testing, security review, and the v1 transaction format (SIMD-0385, 4096-byte transactions). Prefers @solana/kit plugin clients (createClient + .use(); kit 8 for v1), @solana/kit-plugin-wallet + @solana/react for wallets, web3.js v3 (RC) as the legacy migration target, and Surfpool for local networks.'
+description: 'Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "fuzz my Solana program", "deploy to devnet", "send a v1 transaction", "support larger transactions", "fix maxSupportedTransactionVersion", or "explain Solana concepts" (rent, accounts, PDAs, CPIs). Also for program architecture — state layout, reducing compute units, throughput bottlenecks, instruction naming — and quick on-chain lookups via public RPC + curl (balance, transaction, token account). End-to-end playbook: wallet connection, Anchor/Pinocchio programs, Codama clients, Surfpool/LiteSVM/Mollusk testing, security review, and the v1 transaction format (SIMD-0385, 4096-byte transactions). Prefers @solana/kit 8 plugin clients (createClient + .use()) building transaction v1 by default, @solana/kit-plugin-wallet + @solana/react for wallets, web3.js v3 (RC) as the legacy migration target, and Surfpool for local networks.'
 license: MIT
 compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: "2.4.0"
+  version: "2.5.0"
 ---
 
-# Solana Development Skill (Kit-first)
+# Solana Development Skill
 
 ## What this Skill is for
 Use this Skill when the user asks for:
 - Solana dApp UI work (React / Next.js)
 - Wallet connection + signing flows
 - Transaction building / sending / confirmation UX
-- Transaction v1 / larger transactions (SIMD-0385) — sending, reading, indexing
+- Transaction v1 / larger transactions (SIMD-0385) — the default format for new code; sending, reading, indexing
 - On-chain program development (Anchor or Pinocchio)
 - Program architecture — state layout, PDA seed conventions, naming, parallelization, cranks, vault topology
 - Client SDK generation (typed program clients)
@@ -28,14 +28,16 @@ Use this Skill when the user asks for:
 
 ## Default stack decisions (opinionated)
 
-1) **SDK: @solana/kit (v7+) first**
-- Build clients with `createClient()` from `@solana/kit`, then `.use(...)` plugins:
+1) **SDK: @solana/kit 8 plugin clients, transaction v1 by default**
+- Build clients with `createClient()` from `@solana/kit`, then `.use(...)` plugins. Pass `transactionConfig: { version: 1 }` to the RPC plugin so every transaction the client plans is v1:
   ```ts
   createClient()
     .use(signer(mySigner))
-    .use(solanaRpc({ rpcUrl }));
+    .use(solanaRpc({ rpcUrl, transactionConfig: { version: 1, priorityFeeLamports: lamports(5_000n) } }));
   // or solanaLocalRpc / solanaDevnetRpc / solanaMainnetRpc from @solana/kit-plugin-rpc
   ```
+- **Transaction v1 is the default for new code**. Set `version: 1`; the planner otherwise defaults to v0. Plugin clients estimate compute and loaded-accounts-data limits by simulation. On manual pipelines, use Kit's resource-estimation helpers instead of guessing limits; use fixed values only for measured overrides or deliberate caps. See [transactions-v1.md](references/transactions-v1.md).
+- Manual `pipe()` + `createTransactionMessage({ version: 1 })` is the low-level alternative for when you need control over every step (custom lifetimes, offline signing, bespoke planners) — see [kit/advanced.md](references/kit/advanced.md). It is not the default path.
 - Default to `signer()` / `signerFromFile()` / `generatedSigner()` from
   `@solana/kit-plugin-signer` — they set both `payer` and `identity` to the same keypair (the
   common case). For fresh local/devnet signers, install the RPC/LiteSVM plugin after
@@ -43,11 +45,11 @@ Use this Skill when the user asks for:
   (`payer()` + `identity()`) only when fees and authority must come from different keypairs.
 - Use `@solana-program/*` program plugins (e.g., `tokenProgram()`) for fluent instruction APIs.
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
-- **Transaction v1** (4096-byte transactions, SIMD-0385) is the one exception to the plugin-client default: `rpcTransactionPlanner` throws on `version: 1` today, so v1 needs `@solana/kit` 8 and the manual `pipe()` path. See [transactions-v1.md](references/transactions-v1.md).
 
 2) **UI: Kit plugin client + @solana/react**
 - Wallet connection via `walletSigner()` from `@solana/kit-plugin-wallet` (Wallet Standard discovery; the connected wallet fills the payer/identity roles), with React hooks from `@solana/kit-plugin-wallet/react`.
-- Client bindings via `@solana/react` v7 (`ClientProvider`, typed `useClient<AppClient>`, data hooks, SWR/TanStack adapters). Its legacy Wallet Standard hooks are being deprecated — don't use them.
+- Before sending v1 from a wallet-backed client, check `connected.supportedTransactionVersions.has(1)` (from `client.wallet.getState()` or `useConnectedWallet`). Wallets that have not shipped v1 reject the signing request; fall back to a `version: 0` client for them — see [frontend.md](references/frontend.md#wallet-connection).
+- Client bindings via `@solana/react` 8 (`ClientProvider`, typed `useClient<AppClient>`, data hooks, SWR/TanStack adapters). Its legacy Wallet Standard hooks are being deprecated — don't use them.
 - Do **not** use `@solana/client` / `@solana/react-hooks` (framework-kit) or `@solana/wallet-adapter-*` for new work.
 
 3) **Legacy compatibility: web3.js v3 (RC)**
@@ -113,8 +115,8 @@ When solving a Solana task:
 Always be explicit about:
 - cluster + RPC endpoints + websocket endpoints
 - fee payer + recent blockhash
-- compute budget + prioritization (where relevant) — on v1 these live in `message.config`, not ComputeBudget instructions, and unset limits are **zero**
-- transaction version — `maxSupportedTransactionVersion: 1` on every `getTransaction` / `getBlock` / `blockSubscribe` read
+- compute budget + prioritization (where relevant) — on v1 these live in `message.config`; never add ComputeBudget instructions on v1 transactions because they are no-ops. Plugin clients estimate resource limits; manual `pipe()` code should use Kit's resource estimators unless fixed limits are intentional
+- transaction version — `version: 1` in the client's `transactionConfig` when sending; `maxSupportedTransactionVersion: 1` on every `getTransaction` / `getBlock` / `blockSubscribe` read
 - expected account owners + signers + writability
 - token program variant (SPL Token vs Token-2022) and any extensions
 
@@ -172,7 +174,7 @@ Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local
 - Quick RPC lookups (curl + public endpoints): [rpc-quick-lookups.md](references/rpc-quick-lookups.md) — balance, tx, token account, account info
 - Solana Kit (@solana/kit): [kit/overview.md](references/kit/overview.md) — plugin clients, quick start, common patterns
 - Kit Plugins & Composition: [kit/plugins.md](references/kit/plugins.md) — ready-to-use clients, wallet plugin, custom composition, available plugins
-- **Transaction v1 / larger transactions (SIMD-0385):** [transactions-v1.md](references/transactions-v1.md) — feature gate check, `maxSupportedTransactionVersion: 1`, `transactionConfig`, sending with kit 8
+- **Transaction v1 / larger transactions (SIMD-0385):** [transactions-v1.md](references/transactions-v1.md) — plugin-client `transactionConfig: { version: 1 }`, `maxSupportedTransactionVersion: 1` reads, indexing, manual `pipe()` fallback
 - Kit Advanced: [kit/advanced.md](references/kit/advanced.md) — manual transactions, direct RPC, building plugins, domain-specific clients
 - UI + wallet + hooks: [frontend.md](references/frontend.md) — app setup, wallet connection, sending, live balances
 - Kit React bindings (@solana/react): [kit/react.md](references/kit/react.md) — ClientProvider, typed useClient, data hooks, wallet hook reference

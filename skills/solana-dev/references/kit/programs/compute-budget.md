@@ -1,6 +1,6 @@
 ---
 title: Compute Budget Program
-description: Kit-compatible @solana-program/compute-budget client for CU limits, priority fees, heap frames, CU estimation, and retry strategies.
+description: Budgeting compute units, priority fees, heap, and loaded-accounts data — via message config on transaction v1 (the default) or @solana-program/compute-budget instructions on legacy/v0.
 ---
 
 # Compute Budget Program
@@ -11,13 +11,46 @@ Program address: `ComputeBudget111111111111111111111111111111`
 import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
 ```
 
-Correctly budgeting compute units for your transaction increases the probability it gets accepted for processing. Without a declared CU limit, validators assume 200K CU per instruction. Since validators pack blocks to maximize throughput, they prefer transactions with tight budgets that clearly fit in remaining block space. Pairing a tight CU limit with a priority fee gives validators direct incentive to include your transaction. Total fee = base fee (5,000 lamports/sig) + (CU consumed × price per CU in micro-lamports).
+Use a tight compute budget so validators can schedule the transaction efficiently. Estimate resource limits from simulation; set fixed values only when you have reliable measurements or need an intentional cap.
 
-## Instructions
+## Where the budget lives depends on the transaction version
+
+| | legacy / v0 | **v1 (default for new code)** |
+|---|---|---|
+| Compute unit limit | `SetComputeUnitLimit` instruction | `message.config.computeUnitLimit` |
+| Priority fee | `SetComputeUnitPrice` — micro-lamports **per CU** | `message.config.priorityFeeLamports` — **total lamports** |
+| Loaded accounts data size | `SetLoadedAccountsDataSizeLimit` instruction (default 64 MiB) | `message.config.loadedAccountsDataSizeLimit` (**default 0**) |
+| Heap | `RequestHeapFrame` instruction | `message.config.heapSize` |
+| Unset CU limit | 200K per instruction, max 1.4M | **0 CU** — the transaction cannot run |
+
+On v1 the ComputeBudget program's instructions are **no-ops**: they execute successfully doing nothing, burn 150 CU and an instruction slot, and Kit's types reject the mismatched setters. Everything below under *Instructions* and *CU Estimation Helpers* is the legacy/v0 path. Full v1 reference: [transactions-v1.md](../../transactions-v1.md).
+
+**Plugin clients estimate limits automatically.** With `solanaRpc({ transactionConfig: { version: 1, priorityFeeLamports } })`, `client.sendTransaction()` reserves and estimates both v1 limits. Legacy/v0 clients similarly manage ComputeBudget instructions. Use the manual APIs only with a manual `pipe()` pipeline. See [overview.md](../overview.md) and [plugins.md](../plugins.md).
+
+## Version-routed setters (manual `pipe()` path)
+
+`@solana/kit` 8 routes three of the four budget setters by message version, so the same call appends an instruction on legacy/v0 and writes `message.config` on v1:
+
+```ts
+import {
+  setTransactionMessageComputeUnitLimit,        // any version
+  setTransactionMessageLoadedAccountsDataSizeLimit, // any version
+  setTransactionMessageHeapSize,                // any version
+  setTransactionMessagePriorityFeeLamports,     // v1 only — total lamports
+  setTransactionMessageComputeUnitPrice,        // legacy/v0 only — micro-lamports per CU
+  setTransactionMessageConfig,                  // v1 only — whole budget in one call
+} from '@solana/kit';
+
+// Use these setters for measured overrides. For normal sends, estimate the
+// limits with the resource-estimation pipeline below.
+const v1 = setTransactionMessagePriorityFeeLamports(5_000n, message);
+```
+
+Estimate both v1 limits with `fillTransactionMessageProvisoryResourceLimits` and `estimateAndSetResourceLimitsFactory(estimateResourceLimitsFactory({ rpc }))`. See [Sizing the resource limits](../../transactions-v1.md#sizing-the-resource-limits).
+
+## Instructions (legacy / v0)
 
 ### Set Compute Unit Limit
-
-If you're using a Kit client built with the `solanaRpc` / `solanaLocalRpc` / `solanaDevnetRpc` / `solanaMainnetRpc` plugins (from `@solana/kit-plugin-rpc`), CU estimation is handled automatically via `client.sendTransaction()` — you don't need this. Use the manual instructions below when building transactions with `pipe()` or when you need direct control. See [overview.md](../overview.md) and [plugins.md](../plugins.md).
 
 Always set based on simulation — overestimate wastes block space, underestimate fails the transaction.
 
@@ -29,7 +62,7 @@ const ix = getSetComputeUnitLimitInstruction({ units: 200_000 });
 
 ### Set Compute Unit Price (Priority Fee)
 
-Price per CU in micro-lamports — higher values improve inclusion during congestion.
+Price per CU in micro-lamports — higher values improve inclusion during congestion. Total fee on legacy/v0 = base fee (5,000 lamports/sig) + (CU consumed × price per CU in micro-lamports). On v1 the fee is stated directly as `priorityFeeLamports`.
 
 ```ts
 import { getSetComputeUnitPriceInstruction } from '@solana-program/compute-budget';
@@ -47,9 +80,9 @@ import { getRequestHeapFrameInstruction } from '@solana-program/compute-budget';
 const ix = getRequestHeapFrameInstruction({ bytes: 256 * 1024 }); // 256 KB
 ```
 
-## CU Estimation Helpers
+## CU Estimation Helpers (legacy / v0)
 
-Simulate before sending to set a tight CU limit and avoid overpaying on priority fees.
+Simulate before sending to set a tight CU limit and avoid overpaying on priority fees. These estimators emit ComputeBudget instructions; on v1 use `estimateResourceLimitsFactory` from `@solana/kit` instead.
 
 ### Basic Estimator
 
@@ -78,7 +111,7 @@ const estimateAndUpdateCU = estimateAndUpdateProvisoryComputeUnitLimitFactory(
 const updatedMessage = await estimateAndUpdateCU(transactionMessage);
 ```
 
-## Transaction Helpers
+## Transaction Helpers (legacy / v0)
 
 ### Update or Append Instructions
 
@@ -101,9 +134,55 @@ const msg2 = updateOrAppendSetComputeUnitPriceInstruction(
 );
 ```
 
-## Full Pattern: Build, Estimate, Send
+## Full Pattern: Build, Estimate, Send (v1)
 
-Build with priority fee → estimate CU via simulation → refresh blockhash (simulation consumed time) → sign and send.
+Build with the priority fee → reserve provisory limits → estimate both by one simulation → refresh blockhash (simulation consumed time) → sign and send over base64.
+
+```ts
+import {
+  pipe, createTransactionMessage, setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstruction,
+  setTransactionMessagePriorityFeeLamports, fillTransactionMessageProvisoryResourceLimits,
+  estimateResourceLimitsFactory, estimateAndSetResourceLimitsFactory,
+  signTransactionMessageWithSigners, sendAndConfirmTransactionFactory,
+  assertIsTransactionWithBlockhashLifetime, assertIsTransactionWithinSizeLimit, lamports,
+} from '@solana/kit';
+
+async function sendWithComputeBudget(rpc, rpcSubscriptions, signer, instruction) {
+  const estimateAndSetLimits = estimateAndSetResourceLimitsFactory(estimateResourceLimitsFactory({ rpc }));
+
+  // 1. Build the message with the priority fee (a total, not a per-CU price)
+  const { value: simBlockhash } = await rpc.getLatestBlockhash().send();
+  let message = pipe(
+    createTransactionMessage({ version: 1 }),
+    m => setTransactionMessageFeePayerSigner(signer, m),
+    m => setTransactionMessageLifetimeUsingBlockhash(simBlockhash, m),
+    m => appendTransactionMessageInstruction(instruction, m),
+    m => setTransactionMessagePriorityFeeLamports(lamports(5_000n), m),
+    // 2. Reserve space for both limits so the message simulates at its final size
+    m => fillTransactionMessageProvisoryResourceLimits(m),
+  );
+
+  // 3. One simulation with both limits maxed; writes computeUnitLimit and
+  //    loadedAccountsDataSizeLimit back. No margin — wrap the estimator to add some.
+  message = await estimateAndSetLimits(message);
+
+  // 4. Refresh blockhash after estimation
+  const { value: freshBlockhash } = await rpc.getLatestBlockhash().send();
+  message = setTransactionMessageLifetimeUsingBlockhash(freshBlockhash, message);
+
+  // 5. Sign and send (sendAndConfirm submits over base64, as v1 requires)
+  const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
+  const signed = await signTransactionMessageWithSigners(message);
+  assertIsTransactionWithBlockhashLifetime(signed);
+  assertIsTransactionWithinSizeLimit(signed); // 4096 bytes on v1
+  return sendAndConfirm(signed, { commitment: 'confirmed' });
+}
+```
+
+### Legacy / v0 equivalent
+
+Same shape, with ComputeBudget instructions and the `@solana-program/compute-budget` estimator. Keep this only for code that must stay on v0 (e.g. a wallet that does not sign v1 yet).
 
 ```ts
 import {
@@ -118,34 +197,21 @@ import {
   estimateAndUpdateProvisoryComputeUnitLimitFactory,
 } from '@solana-program/compute-budget';
 
-async function sendWithComputeBudget(rpc, rpcSubscriptions, signer, instruction) {
-  // Setup CU estimator
+async function sendWithComputeBudgetV0(rpc, rpcSubscriptions, signer, instruction) {
   const estimateAndUpdateCU = estimateAndUpdateProvisoryComputeUnitLimitFactory(
     estimateComputeUnitLimitFactory({ rpc })
   );
-
-  // 1. Build base message with priority fee
   const { value: simBlockhash } = await rpc.getLatestBlockhash().send();
-
   let message = pipe(
     createTransactionMessage({ version: 0 }),
     m => setTransactionMessageFeePayerSigner(signer, m),
     m => setTransactionMessageLifetimeUsingBlockhash(simBlockhash, m),
     m => appendTransactionMessageInstruction(instruction, m),
-    m => prependTransactionMessageInstruction(
-      getSetComputeUnitPriceInstruction({ microLamports: 1000n }),
-      m
-    ),
+    m => prependTransactionMessageInstruction(getSetComputeUnitPriceInstruction({ microLamports: 1000n }), m),
   );
-
-  // 2. Estimate CU via simulation (adds/updates CU limit instruction)
   message = await estimateAndUpdateCU(message);
-
-  // 3. IMPORTANT: Refresh blockhash after estimation
   const { value: freshBlockhash } = await rpc.getLatestBlockhash().send();
   message = setTransactionMessageLifetimeUsingBlockhash(freshBlockhash, message);
-
-  // 4. Sign and send
   const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
   const signed = await signTransactionMessageWithSigners(message);
   assertIsTransactionWithBlockhashLifetime(signed);

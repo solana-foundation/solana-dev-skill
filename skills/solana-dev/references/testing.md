@@ -254,6 +254,7 @@ import {
     getBase64EncodedWireTransaction,
     lamports,
     pipe,
+    setTransactionMessageConfig,
     setTransactionMessageFeePayerSigner,
     setTransactionMessageLifetimeUsingBlockhash,
     signTransactionMessageWithSigners,
@@ -307,10 +308,12 @@ describe('deposit flow', () => {
         });
         const { value: blockhash } = await client.rpc.getLatestBlockhash().send();
         const signedTx = await signTransactionMessageWithSigners(pipe(
-            createTransactionMessage({ version: 0 }),
+            createTransactionMessage({ version: 1 }),
             m => setTransactionMessageFeePayerSigner(client.payer, m),
             m => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
             m => appendTransactionMessageInstruction(ix, m),
+            // v1 budgets zero for unset limits; the profiler needs room to run
+            m => setTransactionMessageConfig({ computeUnitLimit: 200_000, loadedAccountsDataSizeLimit: 64 * 1024 }, m),
         ));
         const base64VersionedTx = getBase64EncodedWireTransaction(signedTx);
 

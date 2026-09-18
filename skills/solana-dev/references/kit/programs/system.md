@@ -89,6 +89,8 @@ const ix = getAdvanceNonceAccountInstruction({
 import {
   pipe, createTransactionMessage, setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstructions,
+  fillTransactionMessageProvisoryResourceLimits,
+  estimateResourceLimitsFactory, estimateAndSetResourceLimitsFactory,
   signTransactionMessageWithSigners, sendAndConfirmTransactionFactory,
   assertIsTransactionWithBlockhashLifetime, generateKeyPairSigner, lamports,
 } from '@solana/kit';
@@ -102,8 +104,8 @@ const minRent = await rpc.getMinimumBalanceForRentExemption(0n).send();
 
 const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
-const message = pipe(
-  createTransactionMessage({ version: 0 }),
+const draft = pipe(
+  createTransactionMessage({ version: 1 }),
   m => setTransactionMessageFeePayerSigner(payer, m),
   m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
   m => appendTransactionMessageInstructions([
@@ -120,7 +122,12 @@ const message = pipe(
       amount: lamports(1_000_000_000n),
     }),
   ], m),
+  fillTransactionMessageProvisoryResourceLimits,
 );
+
+const message = await estimateAndSetResourceLimitsFactory(
+  estimateResourceLimitsFactory({ rpc }),
+)(draft);
 
 const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
 const signed = await signTransactionMessageWithSigners(message);

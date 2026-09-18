@@ -36,7 +36,8 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 
 | Solana CLI | Agave Version | Era | solana-program Crate | Platform Tools | Status |
 |---|---|---|---|---|---|
-| **4.1.x** | v4.1.x (latest stable: 4.1.2, Jul 2026) | Jul 2026 | N/A (validator only) | v1.52+ | Stable |
+| **4.2.x** | v4.2.x (latest stable: 4.2.2, Sep 2026) | Sep 2026 | N/A (validator only) | v1.52+ | Stable — transaction v1 (`enable_tx_v1`) activated on mainnet 2026-09-15 |
+| **4.1.x** | v4.1.x (latest: 4.1.2, Jul 2026) | Jul 2026 | N/A (validator only) | v1.52+ | Stable |
 | **3.1.x** | v3.1.x | Jan 2026 | N/A (validator only) | v1.52 | Stable — CI-tested pairing for Anchor 1.1.x (3.1.10) |
 | **3.0.x** | v3.0.x | Late 2025 | N/A (validator only) | v1.52 | Stable (mainnet) |
 | **2.1.x** | v2.1.x | Mid 2025 | 2.x | v1.47–v1.51 | Stable |
@@ -48,8 +49,8 @@ description: Reference table for matching Anchor, Solana CLI, Rust, and Node.js 
 ### Important: Solana CLI v3.x+
 As of Agave v3.0.0, Anza **no longer publishes the `agave-validator` binary**. Operators must build from source. The CLI tools (for program development) remain available via `agave-install` or the install script.
 
-### Agave 4.x vs SDK crate versions (Jul 2026)
-Agave validator releases (4.x) are versioned **independently** from the SDK crates. `solana-program` is at 4.0.0 and `solana-sdk` at 4.0.1 (Feb 2026), but **Anchor 1.1.x still pins the 3.x crate line** (`solana-program = "3.0.0"` internally) and its CI installs Solana CLI 3.1.10. For Anchor projects, stay on `solana-*` `^3` crates until Anchor moves; for non-Anchor native programs you may use the 4.x crates with matching tooling.
+### Agave 4.x vs SDK crate versions (Sep 2026)
+Agave validator releases (4.x) are versioned **independently** from the SDK crates. The `solana-*` crates are on the 4.x line (`solana-message` 4.2.x carries `v1::Message`; `solana-rpc-client` 4.2.x reads v1), but **Anchor 1.1.x still pins the 3.x crate line** (`solana-program = "3.0.0"` internally) and its CI installs Solana CLI 3.1.10. For Anchor *programs*, stay on `solana-*` `^3` crates until Anchor moves; for Rust *clients* that send or read transaction v1, and for non-Anchor native programs, use the 4.x crates with matching tooling.
 
 ## Platform Tools → Rust Toolchain Mapping
 
@@ -299,18 +300,21 @@ If the `litesvm` npm native binary fails with GLIBC errors (verified on 0.5.0):
 
 ## Transaction v1 (SIMD-0385) Minimum Versions
 
-Full reference: [transactions-v1.md](./transactions-v1.md). Feature gate: `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL`, targeted for Agave v4.2 (tentative).
+Full reference: [transactions-v1.md](./transactions-v1.md). Feature gate `txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL` activated on mainnet 2026-09-15 with Agave 4.2.2. v1 is the default transaction version for new code in this skill.
 
 | Component | Minimum for v1 | Notes |
 |---|---|---|
-| Anza CLI / Agave | **4.2.0** | v1 support and `maxSupportedTransactionVersion: 1`. Local test validator activates every feature at genesis |
+| Anza CLI / Agave | **4.2.0** (mainnet runs 4.2.2) | v1 support and `maxSupportedTransactionVersion: 1`. Local test validator activates every feature at genesis |
 | Surfpool | **1.5** | Enables the gate by default |
-| `solana-message` (Rust) | **4.2.0** | `v1::Message` landed in 4.1.0; 4.2.0 adds the inherent `Message::serialize()` |
-| `solana-rpc-client` (Rust) | 4.2.1 | `max_supported_transaction_version: Some(1)` |
-| `@solana/kit` | **8.0.0** | 7.1.1 has the v1 codecs, config setters, and `maxSupportedTransactionVersion: 1`, but 8.0.0 is the first to *type* `createTransactionMessage({ version: 1 })` |
-| `@solana/kit-plugin-rpc` | — | Reads fine; **sending v1 throws** through 0.18.0 (current) — use the manual `pipe()` path |
-| `@solana/web3.js` (v3, `@rc`) | **3.0.0-rc.3** (pending) | [PR #3861](https://github.com/solana-foundation/solana-web3.js/pull/3861) (`compileToV1Message`) ready, unmerged. Published rc.2 has legacy/v0 only |
-| `@solana/web3.js` 1.x | **1.99.0** (pending) | [PR #3866](https://github.com/solana-foundation/solana-web3.js/pull/3866) drafted, unmerged; latest published is 1.98.4. ⚠️ Read-only even then — 1.x never sends v1 |
+| `solana-*` crates (Rust) | **4.x** (`solana-message` ≥4.2.0, `solana-rpc-client` ≥4.2.1) | `v1::Message` landed in `solana-message` 4.1.0; 4.2.0 adds the inherent `Message::serialize()`. `max_supported_transaction_version: Some(1)` on the RPC client |
+| `@solana/kit` | **8.0.0** (current 8.3.0) | 7.1.1 has the v1 codecs, config setters, and `maxSupportedTransactionVersion: 1`, but 8.0.0 is the first to *type* `createTransactionMessage({ version: 1 })` |
+| `@solana/kit-plugin-rpc` | **0.19.0** | `solanaRpc({ transactionConfig: { version: 1 } })` plans, estimates, and sends v1. ≤0.18 throws at runtime |
+| `@solana/kit-plugin-litesvm` | **0.19.0** | `litesvm({ transactionConfig: { version: 1 } })`; writes maximum limits instead of estimating |
+| `@solana/kit-plugin-wallet` | **0.20.0** | `connected.supportedTransactionVersions` typed to include `1` (`@solana/wallet-standard-features` 1.5) |
+| `@solana/kit-plugin-signer` | 0.19.0 | Pairs with the 0.19 rpc/litesvm plugins |
+| `@solana/react` | 8.x | Kit 8 client bindings |
+| `@solana/web3.js` (v3, `@rc`) | **3.0.0-rc.3** | `compileToV1Message`; send and read |
+| `@solana/web3.js` 1.x | **1.99.0** | ⚠️ Read-only — 1.x never sends v1 |
 | `solders` (Python) | **0.29.0** | Read and send. Earlier releases have neither |
 | `solana-go` | unreleased | [PR #481](https://github.com/solana-foundation/solana-go/pull/481) |
 | `yellowstone-grpc-proto` (Rust) | **12.6.0** | First release whose generated code has `Message.config` (field 7) |

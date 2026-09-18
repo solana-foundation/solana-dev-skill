@@ -7,7 +7,7 @@ description: Manual transaction building with pipe composition, direct RPC clien
 
 This reference covers low-level patterns for when you need full control over the transaction lifecycle, direct RPC access, or want to build custom plugins and domain-specific clients.
 
-For most use cases, prefer the plugin clients in [overview.md](overview.md) and [plugins.md](plugins.md).
+For most use cases, prefer the plugin clients in [overview.md](overview.md) and [plugins.md](plugins.md) — with `transactionConfig: { version: 1 }` they build, budget, and send transaction v1 without any of the code below. Everything here uses `createTransactionMessage({ version: 1 })` (`@solana/kit` 8); `legacy` and `0` are historical formats you read, not ones you emit in new code.
 
 ---
 
@@ -35,20 +35,26 @@ For most use cases, prefer the plugin clients in [overview.md](overview.md) and 
 import {
   pipe, createTransactionMessage, setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstruction,
-  prependTransactionMessageInstruction,
+  fillTransactionMessageProvisoryResourceLimits,
+  estimateResourceLimitsFactory, estimateAndSetResourceLimitsFactory,
 } from '@solana/kit';
 
 const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
-const message = pipe(
-  createTransactionMessage({ version: 0 }),
+const draft = pipe(
+  createTransactionMessage({ version: 1 }),
   m => setTransactionMessageFeePayerSigner(signer, m),
   m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
   m => appendTransactionMessageInstruction(instruction, m),
+  fillTransactionMessageProvisoryResourceLimits,
 );
+
+const message = await estimateAndSetResourceLimitsFactory(
+  estimateResourceLimitsFactory({ rpc }),
+)(draft);
 ```
 
-For a `version: 1` message (4096-byte transactions, SIMD-0385) the pipeline is identical, plus one `setTransactionMessageConfig` step — and it is currently the **only** way to send v1, since the plugin client's planner rejects `version: 1`. Requires `@solana/kit` 8. See [transactions-v1.md](../transactions-v1.md).
+A v1 message allows 4096 bytes, no address lookup tables, and carries its whole compute budget in `message.config` rather than in ComputeBudget instructions. The plugin client does this step for you; on the manual path it is yours. See [transactions-v1.md](../transactions-v1.md).
 
 ### Fee Payer
 
@@ -102,38 +108,37 @@ const instruction: Instruction = {
 
 ## Compute Budget
 
-Should be used for production transactions.
+Estimate limits for production transactions. On v1 the budget lives in `message.config`; Kit measures both limits with one simulation.
 
-### Setup CU Estimator
+### Setup Resource Limit Estimator
 
 ```ts
 import {
-  getSetComputeUnitPriceInstruction,
-  estimateComputeUnitLimitFactory,
-  estimateAndUpdateProvisoryComputeUnitLimitFactory,
-} from '@solana-program/compute-budget';
+  estimateResourceLimitsFactory,
+  estimateAndSetResourceLimitsFactory,
+  fillTransactionMessageProvisoryResourceLimits,
+} from '@solana/kit';
 
-const estimateAndUpdateCU = estimateAndUpdateProvisoryComputeUnitLimitFactory(
-  estimateComputeUnitLimitFactory({ rpc })
+const estimateAndSetLimits = estimateAndSetResourceLimitsFactory(
+  estimateResourceLimitsFactory({ rpc })
 );
 ```
 
-### Full Pattern: Priority Fee + CU Estimation + Blockhash Refresh
+### Full Pattern: Priority Fee + Limit Estimation + Blockhash Refresh
 
 ```ts
-// 1. Build message with priority fee
+// 1. Build message with the priority fee (total lamports on v1) and provisory limits
 let message = pipe(
-  createTransactionMessage({ version: 0 }),
+  createTransactionMessage({ version: 1 }),
   m => setTransactionMessageFeePayerSigner(signer, m),
   m => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
   m => appendTransactionMessageInstruction(instruction, m),
-  m => prependTransactionMessageInstruction(
-    getSetComputeUnitPriceInstruction({ microLamports: 1000n }), m
-  ),
+  m => setTransactionMessagePriorityFeeLamports(lamports(5_000n), m),
+  m => fillTransactionMessageProvisoryResourceLimits(m),
 );
 
-// 2. Estimate CU via simulation
-message = await estimateAndUpdateCU(message);
+// 2. Estimate CU limit and loaded-accounts data size via one simulation
+message = await estimateAndSetLimits(message);
 
 // 3. REFRESH blockhash (simulation takes time, old one may expire)
 const { value: freshBlockhash } = await rpc.getLatestBlockhash().send();
@@ -143,18 +148,18 @@ message = setTransactionMessageLifetimeUsingBlockhash(freshBlockhash, message);
 await signAndSendTransactionMessageWithSigners(message);
 ```
 
+The estimate has no margin and the data size is charged in 32 KiB pages — wrap the estimator to add headroom. See [Sizing the resource limits](../transactions-v1.md#sizing-the-resource-limits).
+
 ### Update Priority Fee Dynamically
 
 ```ts
-import { updateOrAppendSetComputeUnitPriceInstruction } from '@solana-program/compute-budget';
+import { setTransactionMessagePriorityFeeLamports, getTransactionMessagePriorityFeeLamports } from '@solana/kit';
 
-const updated = updateOrAppendSetComputeUnitPriceInstruction(
-  (current) => current === null ? 1000n : current * 2n,
-  message
-);
+const current = getTransactionMessagePriorityFeeLamports(message) ?? 0n;
+const updated = setTransactionMessagePriorityFeeLamports(lamports(current === 0n ? 5_000n : current * 2n), message);
 ```
 
-See [programs/compute-budget.md](programs/compute-budget.md) for the full CU reference.
+For legacy/v0 messages the equivalents are `@solana-program/compute-budget`'s `estimateAndUpdateProvisoryComputeUnitLimitFactory` and `updateOrAppendSetComputeUnitPriceInstruction`. See [programs/compute-budget.md](programs/compute-budget.md) for both paths.
 
 ---
 
@@ -231,34 +236,29 @@ const base64 = getBase64EncodedWireTransaction(signedTx);
 import {
   pipe, createTransactionMessage, setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstruction,
-  prependTransactionMessageInstruction, signTransactionMessageWithSigners,
-  sendAndConfirmTransactionFactory, assertIsTransactionWithBlockhashLifetime,
-  assertIsTransactionWithinSizeLimit,
+  setTransactionMessagePriorityFeeLamports, fillTransactionMessageProvisoryResourceLimits,
+  estimateResourceLimitsFactory, estimateAndSetResourceLimitsFactory,
+  signTransactionMessageWithSigners, sendAndConfirmTransactionFactory,
+  assertIsTransactionWithBlockhashLifetime, assertIsTransactionWithinSizeLimit, lamports,
 } from '@solana/kit';
-import {
-  getSetComputeUnitPriceInstruction,
-  estimateComputeUnitLimitFactory,
-  estimateAndUpdateProvisoryComputeUnitLimitFactory,
-} from '@solana-program/compute-budget';
 
 async function sendTx(rpc, rpcSubscriptions, signer, instruction) {
-  const estimateAndUpdateCU = estimateAndUpdateProvisoryComputeUnitLimitFactory(
-    estimateComputeUnitLimitFactory({ rpc })
+  const estimateAndSetLimits = estimateAndSetResourceLimitsFactory(
+    estimateResourceLimitsFactory({ rpc })
   );
 
   const { value: simBlockhash } = await rpc.getLatestBlockhash().send();
 
   let message = pipe(
-    createTransactionMessage({ version: 0 }),
+    createTransactionMessage({ version: 1 }),
     m => setTransactionMessageFeePayerSigner(signer, m),
     m => setTransactionMessageLifetimeUsingBlockhash(simBlockhash, m),
     m => appendTransactionMessageInstruction(instruction, m),
-    m => prependTransactionMessageInstruction(
-      getSetComputeUnitPriceInstruction({ microLamports: 1000n }), m
-    ),
+    m => setTransactionMessagePriorityFeeLamports(lamports(5_000n), m),
+    m => fillTransactionMessageProvisoryResourceLimits(m),
   );
 
-  message = await estimateAndUpdateCU(message);
+  message = await estimateAndSetLimits(message);
 
   // Refresh blockhash after estimation
   const { value: freshBlockhash } = await rpc.getLatestBlockhash().send();
@@ -267,7 +267,7 @@ async function sendTx(rpc, rpcSubscriptions, signer, instruction) {
   const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
   const signed = await signTransactionMessageWithSigners(message);
   assertIsTransactionWithBlockhashLifetime(signed);
-  assertIsTransactionWithinSizeLimit(signed);
+  assertIsTransactionWithinSizeLimit(signed); // 4096 bytes on v1
   await sendAndConfirm(signed, { commitment: 'confirmed' });
 }
 ```
