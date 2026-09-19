@@ -128,11 +128,15 @@ With the wallet plugin installed, `client.sendTransaction` plans a v1 transactio
 
 import { address, sol, solToLamports } from '@solana/kit';
 import { getTransferSolInstruction } from '@solana-program/system';
+import { useConnectedWallet } from '@solana/kit-plugin-wallet/react';
 import { useAction, useClient } from '@solana/react';
 import type { AppClient } from '@/app/providers';
 
 function TipButton({ to }: { to: string }) {
   const client = useClient<AppClient>();
+  const connected = useConnectedWallet(client);
+  // The client plans v1; a wallet that cannot sign v1 must not be asked to.
+  const canSendV1 = connected?.supportedTransactionVersions.has(1) ?? false;
 
   const { dispatch, isRunning, error, data: signature } = useAction(
     async (signal: AbortSignal, recipient: string) => {
@@ -150,7 +154,7 @@ function TipButton({ to }: { to: string }) {
 
   return (
     <>
-      <button disabled={isRunning} onClick={() => dispatch(to)}>
+      <button disabled={isRunning || !canSendV1} onClick={() => dispatch(to)}>
         {isRunning ? 'Sending…' : error ? 'Retry' : 'Tip 0.01 SOL'}
       </button>
       {signature ? <a href={`https://explorer.solana.com/tx/${signature}`}>View</a> : null}
