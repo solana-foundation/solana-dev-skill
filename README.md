@@ -10,7 +10,7 @@ A comprehensive [Agent Skill](https://agentskills.io/) for modern Solana develop
 
 This skill gives your coding agent deep knowledge of the current Solana development ecosystem:
 
-- **SDK**: `@solana/kit` v7 plugin clients (`createClient()` + `.use()`)
+- **SDK**: `@solana/kit` 8 plugin clients (`createClient()` + `.use()`), building transaction v1 by default
 - **UI**: Wallet Standard connection via `@solana/kit-plugin-wallet` + `@solana/react`
 - **Legacy Interop**: web3.js v3 (RC) — the classic API rebuilt on Kit internals, as the migration target for v1 codebases
 - **Programs**: Anchor 1.1.x (default), Pinocchio 0.11+ for high-performance needs
@@ -95,7 +95,7 @@ Once installed, your agent will automatically use this skill when you ask about:
 - Solana dApp UI work (React / Next.js)
 - Wallet connection and signing flows
 - Transaction building, sending, and confirmation UX
-- Transaction v1 / larger transactions (SIMD-0385) — sending, reading, indexing
+- Transaction v1 / larger transactions (SIMD-0385) — the default format for new code; sending, reading, indexing
 - On-chain program development (Anchor or Pinocchio)
 - Client SDK generation (typed program clients)
 - Local testing (Surfpool, LiteSVM, Mollusk)
@@ -125,7 +125,7 @@ This skill encodes opinionated best practices:
 
 | Layer | Default Choice | Alternative |
 |-------|---------------|-------------|
-| Client SDK | @solana/kit v7 (plugin clients) | web3.js v3 RC (legacy migration target) |
+| Client SDK | @solana/kit 8 (plugin clients, transaction v1) | web3.js v3 RC (legacy migration target) |
 | Wallet / UI | @solana/kit-plugin-wallet + @solana/react | Wallet Standard hooks directly |
 | Program Framework | Anchor 1.1.x | Pinocchio 0.11+ (performance) |
 | Unit Testing | LiteSVM / Mollusk | — |

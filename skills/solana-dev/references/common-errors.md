@@ -443,25 +443,21 @@ The estimate is the exact cost of one simulated run with no margin. Add headroom
 
 ### `Version 1 transactions are not yet supported by rpcTransactionPlanner`
 
-**Cause:** `@solana/kit-plugin-rpc` defines the `version: 1` planner config for forward compatibility but throws at runtime — still true as of 0.18.0, the current release.
+**Cause:** `@solana/kit-plugin-rpc` ≤0.18. Those releases typed the `version: 1` planner config but threw at runtime; 0.19.0 plans v1 natively.
 
-**Fix:** Build v1 with `@solana/kit` 8 and the manual `pipe()` path. Keep plugin clients for legacy/v0.
+**Fix:** `pnpm add @solana/kit@^8.3.0 @solana/kit-plugin-rpc@^0.19.0 @solana/kit-plugin-signer@^0.19.0`, then `solanaRpc({ rpcUrl, transactionConfig: { version: 1 } })`.
+
+### Wallet rejects the transaction after upgrading to v1
+
+**Cause:** The connected wallet has not shipped v1 support, so it refuses to sign a message with version byte `0x81`.
+
+**Fix:** Check `connected.supportedTransactionVersions.has(1)` (from `client.wallet.getState()` or `useConnectedWallet`) before sending, and route those users through a `version: 0` client. See [transactions-v1.md](./transactions-v1.md#wallets).
 
 ### `createTransactionMessage({ version: 1 })` is a type error
 
 **Cause:** `@solana/kit` 7.x carries the v1 codecs, config setters, and `maxSupportedTransactionVersion: 1`, but 8.0.0 is the first release whose types accept the v1 builder.
 
 **Fix:** `pnpm add @solana/kit@^8.0.0`.
-
-### v1 transaction rejected on devnet/testnet/mainnet, works locally
-
-**Cause:** The `enable_tx_v1` feature gate is not activated on that cluster. Local validators (Anza CLI 4.2+) and Surfpool 1.5+ activate every feature at genesis, so v1 works locally well before mainnet.
-
-**Fix:** Check the gate first:
-
-```bash
-solana -u m feature status txv1aq4pp281K9um3tnPgkfX8UqtFT6wcVW3hNezGLL
-```
 
 ### Priority fee or compute unit limit reads as 0 in an indexer
 

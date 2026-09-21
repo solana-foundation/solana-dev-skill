@@ -28,7 +28,7 @@ npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
 
 For LiteSVM testing add `@solana/kit-plugin-litesvm`. For browser wallet connection add `@solana/kit-plugin-wallet`. For Codama-generated program clients add the relevant `@solana-program/*` package(s).
 
-Minimum version: Solana Kit v7 (plugin packages 0.13+). `@solana/kit-plugin-wallet` needs 0.14+ specifically — its React hooks take the client as an explicit argument only from that version on.
+Minimum versions for new code: `@solana/kit` 8.3+, `@solana/kit-plugin-rpc` / `-signer` / `-litesvm` 0.19+, `@solana/kit-plugin-wallet` 0.20+, `@solana/react` 8+. These are the first releases where plugin clients build transaction v1 (`transactionConfig: { version: 1 }`) and wallets report v1 support — see [transactions-v1.md](../transactions-v1.md). Kit 7 with 0.13+ plugins still works for legacy/v0-only code.
 
 ## Quick Start
 
@@ -46,7 +46,7 @@ import { signerFromFile } from '@solana/kit-plugin-signer';
 //   - `payer(...)` + `identity(...)`        // when fees and authority come from different keypairs
 const client = await createClient()
   .use(signerFromFile('~/.config/solana/id.json'))
-  .use(solanaLocalRpc());
+  .use(solanaLocalRpc({ transactionConfig: { version: 1 } })); // v1: 4096-byte transactions, budget in message.config
 
 console.log('Payer:', client.payer.address);
 await client.sendTransaction([myInstruction]);
@@ -55,16 +55,20 @@ await client.sendTransaction([myInstruction]);
 ### Production (Mainnet/Devnet)
 
 ```ts
-import { createClient } from '@solana/kit';
+import { createClient, lamports } from '@solana/kit';
 import { solanaDevnetRpc, solanaMainnetRpc } from '@solana/kit-plugin-rpc';
 import { signer } from '@solana/kit-plugin-signer';
 
+const transactionConfig = { version: 1, priorityFeeLamports: lamports(5_000n) } as const;
+
 const client = createClient()
   .use(signer(mySigner)) // sets payer + identity; use payer(...) + identity(...) if they differ
-  .use(solanaDevnetRpc()); // or solanaMainnetRpc({ rpcUrl: 'https://...' })
+  .use(solanaDevnetRpc({ transactionConfig })); // or solanaMainnetRpc({ rpcUrl: 'https://...', transactionConfig })
 
 await client.sendTransaction([myInstruction]);
 ```
+
+`transactionConfig.version` defaults to `0` when omitted — always pass `version: 1` for new code. On v1 the priority fee is `priorityFeeLamports` (a total); legacy/v0 use `microLamportsPerComputeUnit` (a per-CU price). The client reserves the compute unit and loaded-accounts-data-size limits and fills them by simulation before sending.
 
 `solanaDevnetRpc()` defaults to `https://api.devnet.solana.com` and bundles airdrop. `solanaMainnetRpc({ rpcUrl })` is type-narrowed to a mainnet URL — no devnet-only methods like `airdrop`.
 
@@ -77,12 +81,14 @@ import { airdropSigner, generatedSigner } from '@solana/kit-plugin-signer';
 
 const client = await createClient()
   .use(generatedSigner())
-  .use(litesvm())
+  .use(litesvm({ transactionConfig: { version: 1 } }))
   .use(airdropSigner(lamports(1_000_000_000n)));
 
 client.svm.addProgramFromFile(myProgramAddress, 'program.so');
 await client.sendTransaction([myInstruction]);
 ```
+
+LiteSVM's v1 planner writes maximum limits (1.4M CU, 64 MiB) rather than estimating; override with `computeUnitLimit` / `loadedAccountsDataSizeLimit` in the same config.
 
 Full documentation: [LiteSVM](https://www.litesvm.com/docs/typescript/getting-started).
 
@@ -103,7 +109,7 @@ After applying `solanaRpc` / `solanaLocalRpc` / `solanaDevnetRpc` / `solanaMainn
 | `client.airdrop(address, lamports)` | Faucet (devnet/local/litesvm only) |
 | `client.svm` | LiteSVM instance (litesvm plugin only) |
 
-`solanaRpc({ ... })` accepts `rpcUrl` (required) plus `rpcSubscriptionsUrl`, `transactionConfig` (priority fees), `maxConcurrency`, `skipPreflight`, and the underlying `rpcConfig` / `rpcSubscriptionsConfig`. See [plugins.md](plugins.md) for the full options table, plugin catalog, and custom composition.
+`solanaRpc({ ... })` accepts `rpcUrl` (required) plus `rpcSubscriptionsUrl`, `transactionConfig` (transaction version, priority fee, `estimateResourceLimits`), `maxConcurrency`, `skipPreflight`, and the underlying `rpcConfig` / `rpcSubscriptionsConfig`. See [plugins.md](plugins.md) for the full options table, plugin catalog, and custom composition.
 
 ## Core Concepts
 
@@ -294,10 +300,10 @@ See [codama.md](codama.md) for naming conventions and patterns.
 | Package | Purpose |
 |---------|---------|
 | `@solana/kit` | Main SDK, re-exports all sub-packages, exports `createClient` |
-| `@solana/kit-plugin-rpc` | All-in-one RPC plugins: `solanaRpc`, `solanaMainnetRpc`, `solanaDevnetRpc`, `solanaLocalRpc` (plus low-level `rpc`, `rpcAirdrop`, `rpcTransactionPlanner`, `rpcTransactionPlanExecutor`) |
+| `@solana/kit-plugin-rpc` | All-in-one RPC plugins: `solanaRpc`, `solanaMainnetRpc`, `solanaDevnetRpc`, `solanaLocalRpc` (plus low-level `rpc`, `rpcAirdrop`, `rpcTransactionPlanner`, `rpcTransactionPlanExecutor`). 0.19+ plans transaction v1 via `transactionConfig: { version: 1 }` |
 | `@solana/kit-plugin-signer` | Signer plugins. Default `signer*` variants set both `payer` and `identity` (`signer`, `generatedSigner`, `signerFromFile`). Use `airdropSigner` to fund an already-installed signer; use `generatedSignerWithSol` only when an airdrop function is already installed. Role-specific `payer*` and `identity*` variants for when the two roles differ. |
-| `@solana/kit-plugin-wallet` | Browser wallet connection (Wallet Standard): `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner`; adds `client.wallet` (`getState()`, `connect()`); React hooks in `@solana/kit-plugin-wallet/react` |
-| `@solana/kit-plugin-litesvm` | All-in-one `litesvm` plugin (Node.js only) for in-memory testing |
+| `@solana/kit-plugin-wallet` | Browser wallet connection (Wallet Standard): `walletSigner`, `walletPayer`, `walletIdentity`, `walletWithoutSigner`; adds `client.wallet` (`getState()`, `connect()`); `connected.supportedTransactionVersions` reports whether the wallet signs v1 (0.20+); React hooks in `@solana/kit-plugin-wallet/react` |
+| `@solana/kit-plugin-litesvm` | All-in-one `litesvm` plugin (Node.js only) for in-memory testing; 0.19+ plans transaction v1 |
 | `@solana/kit-plugin-instruction-plan` | `planAndSendTransactions` and instruction batching primitives |
 | `@solana/addresses` | Address validation |
 | `@solana/accounts` | Account fetching/decoding |
@@ -322,7 +328,7 @@ See [codama.md](codama.md) for naming conventions and patterns.
 2. **Use branded types** — `address()`, `lamports()`, `signature()`.
 3. **Use `@solana-program/*`** instruction builders over hand-rolled instruction data.
 4. **Handle account existence** — `assertAccountExists()` before decode.
-5. **Set compute budget** — pass `transactionConfig` to `solanaRpc({ ... })` or use manual CU estimation for production. See [programs/compute-budget.md](programs/compute-budget.md).
+5. **Send transaction v1** — pass `transactionConfig: { version: 1, priorityFeeLamports }` to `solanaRpc({ ... })`; the client estimates both resource limits. Only the manual `pipe()` path needs hand-set budgets. See [../transactions-v1.md](../transactions-v1.md) and [programs/compute-budget.md](programs/compute-budget.md).
 
 ## Reference Files
 

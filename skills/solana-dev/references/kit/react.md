@@ -7,7 +7,7 @@ description: Kit-native React bindings from @solana/react (ClientProvider, typed
 
 Two packages cover React apps:
 
-1. **`@solana/react` (v7+)** — Kit client bindings: `ClientProvider`, `useClient`, `useClientCapability`, data hooks (`useAction`, `useRequest`, `useSubscription`, `useTrackedData`), and adapters for SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`).
+1. **`@solana/react` (8+)** — Kit client bindings: `ClientProvider`, `useClient`, `useClientCapability`, data hooks (`useAction`, `useRequest`, `useSubscription`, `useTrackedData`), and adapters for SWR (`@solana/react/swr`) and TanStack Query (`@solana/react/query`).
 2. **`@solana/kit-plugin-wallet/react`** — wallet connection hooks (see below).
 
 > **Deprecation note:** the older Wallet Standard hooks that shipped in `@solana/react` (`SelectedWalletAccountContextProvider`, `useSelectedWalletAccount`, `useSignIn` / `useSignMessage` / `useSignTransaction` / `useSignAndSendTransaction`, `useWalletAccount*Signer`) are being superseded by the wallet-plugin hooks and will be deprecated. Do not use them in new code.
@@ -168,14 +168,14 @@ const { dispatch, isRunning } = useAirdrop(client);
 
 ## Wallet Hooks (`@solana/kit-plugin-wallet/react`)
 
-Requires `@solana/kit-plugin-wallet` 0.14+ and the `walletSigner` (or `walletWithoutSigner`) plugin on the client. Every hook takes the wallet-enabled `client` as its first argument, keeping the app fully typed end-to-end.
+Requires `@solana/kit-plugin-wallet` 0.20+ (0.14+ for the hooks alone; 0.20 adds typed v1 support reporting) and the `walletSigner` (or `walletWithoutSigner`) plugin on the client. Every hook takes the wallet-enabled `client` as its first argument, keeping the app fully typed end-to-end.
 
 **State hooks:**
 
 | Hook | Returns |
 |------|---------|
 | `useWallets(client)` | Discovered Wallet Standard wallets for the configured chain |
-| `useConnectedWallet(client)` | Active connection (`{ account, signer, wallet }`) or `null` |
+| `useConnectedWallet(client)` | Active connection (`{ account, signer, wallet, supportedTransactionVersions }`) or `null`. Check `supportedTransactionVersions.has(1)` before sending v1 |
 | `useWalletStatus(client)` | `'pending' \| 'disconnected' \| 'connecting' \| 'connected' \| 'disconnecting' \| 'reconnecting'` |
 | `useIsWalletReady(client)` | `false` during discovery warm-up, then `true` |
 

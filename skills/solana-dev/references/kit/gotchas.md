@@ -194,22 +194,36 @@ if (!account.exists) {
 
 Full reference: [transactions-v1.md](../transactions-v1.md).
 
-### `version: 1` throws on the plugin client
+### Plugin client sends v0 when you expected v1
 
-**Cause:** `rpcTransactionPlanner` in `@solana/kit-plugin-rpc` defines the `version: 1` config shape for forward compatibility but rejects it at runtime — still true as of 0.18.0.
+**Cause:** `transactionConfig.version` defaults to `0` when omitted. The version is a property of the client assembly, not of `sendTransaction`.
 
 ```ts
-// ❌ Runtime error: "Version 1 transactions are not yet supported by `rpcTransactionPlanner`."
-createClient().use(signer(s)).use(solanaRpc({ rpcUrl, transactionConfig: { version: 1 } }));
+// ❌ Plans version 0 — 1232-byte limit, ComputeBudget instructions
+createClient().use(signer(s)).use(solanaRpc({ rpcUrl }));
 
-// ✅ Fix: build v1 through the manual pipe with @solana/kit 8 directly
-const message = pipe(
-  createTransactionMessage({ version: 1 }),
-  m => setTransactionMessageFeePayerSigner(payer, m),
-  m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-  m => appendTransactionMessageInstruction(ix, m),
-  m => setTransactionMessageConfig({ computeUnitLimit: 20_000, loadedAccountsDataSizeLimit: 64 * 1024 }, m),
-);
+// ✅ Fix: say so on the RPC (or litesvm) plugin
+createClient().use(signer(s)).use(solanaRpc({ rpcUrl, transactionConfig: { version: 1 } }));
+```
+
+### `Version 1 transactions are not yet supported by rpcTransactionPlanner`
+
+**Cause:** `@solana/kit-plugin-rpc` ≤0.18 only typed the `version: 1` config; 0.19.0 is the first release that plans it.
+
+```bash
+# ✅ Fix
+pnpm add @solana/kit@^8.3.0 @solana/kit-plugin-rpc@^0.19.0 @solana/kit-plugin-signer@^0.19.0
+```
+
+### `microLamportsPerComputeUnit` is a type error with `version: 1`
+
+**Cause:** `transactionConfig` is a discriminated union. Legacy/v0 take `microLamportsPerComputeUnit` (a per-CU price); v1 takes `priorityFeeLamports` (a total in lamports).
+
+```ts
+// ❌
+solanaRpc({ rpcUrl, transactionConfig: { version: 1, microLamportsPerComputeUnit: 1_000n } });
+// ✅
+solanaRpc({ rpcUrl, transactionConfig: { version: 1, priorityFeeLamports: lamports(5_000n) } });
 ```
 
 ### `createTransactionMessage({ version: 1 })` is a type error
@@ -228,8 +242,11 @@ pnpm add @solana/kit@^8.0.0
 ```ts
 // ❌ Zero CU and zero loaded-accounts bytes — cannot run
 createTransactionMessage({ version: 1 });
+// ❌ Same failure through a plugin client that was told not to estimate
+solanaRpc({ rpcUrl, transactionConfig: { version: 1, estimateResourceLimits: false } });
 
-// ✅ Fix: set both explicitly, or measure them by simulation
+// ✅ Fix on the plugin client: leave `estimateResourceLimits` at its default (true)
+// ✅ Fix on the manual path: set both explicitly, or measure them by simulation
 const estimateResourceLimits = estimateResourceLimitsFactory({ rpc });
 const message = await estimateAndSetResourceLimitsFactory(estimateResourceLimits)(
   fillTransactionMessageProvisoryResourceLimits(draft),

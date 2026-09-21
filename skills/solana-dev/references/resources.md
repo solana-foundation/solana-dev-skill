@@ -19,13 +19,13 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 - [Larger Transaction Sizes upgrade guide](https://solana.com/upgrades/larger-transaction-sizes)
 - [SIMD-0385 — transaction v1 format](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)
 - [SIMD-0296 — larger transactions](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0296-larger-transactions.md)
-- [transaction-v1-examples](https://github.com/solana-foundation/transaction-v1-examples) (runnable Rust, TypeScript, Python, Go — send, decode, read blocks, index over gRPC)
-- [Agave v4.2 release schedule](https://github.com/anza-xyz/agave/wiki/v4.2-Release-Schedule)
+- [transaction-v1-examples](https://github.com/solana-foundation/transaction-v1-examples) (runnable Rust, TypeScript, Python, Go — send, decode, read blocks, index over gRPC; `ts/kit-plugins` shows v1 through a kit plugin client, `ts/wallet-table` lists which wallets sign v1)
+- [Agave releases](https://github.com/anza-xyz/agave/releases) (4.2.2 activated `enable_tx_v1` on mainnet, 2026-09-15)
 
 ## Modern JS/TS SDK
 - [@solana/kit Repository](https://github.com/anza-xyz/kit)
 - [Solana Kit Docs](https://www.solanakit.com/) (createClient, plugins, getting started)
-- [Kit Plugins Repository](https://github.com/anza-xyz/kit-plugins) (rpc, signer, wallet, litesvm, instruction-plan)
+- [Kit Plugins Repository](https://github.com/anza-xyz/kit-plugins) (rpc, signer, wallet, litesvm, instruction-plan — rpc/litesvm 0.19+ plan transaction v1, wallet 0.20+ reports wallet v1 support)
 - [Solana Kit Docs on solana.com](https://solana.com/docs/clients/kit)
 
 ## web3.js v3 (classic API on Kit internals)

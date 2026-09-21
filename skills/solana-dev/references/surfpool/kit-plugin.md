@@ -186,7 +186,7 @@ const client = createClient().use(surfnetCheatcodes());
 
 ## Configuration
 
-Surfnet startup options go under the `surfnet` key and are forwarded to `Surfnet.startWithConfig()`. Everything else is forwarded to the local Solana RPC plugin:
+Surfnet startup options go under the `surfnet` key and are forwarded to `Surfnet.startWithConfig()`. Everything else is forwarded to the local Solana RPC plugin, including `transactionConfig: { version: 1 }` for v1 transactions (needs the resolved `@solana/kit-plugin-rpc` to be 0.19+; 1.5.0 still declares `^0.15` as an optional peer, so expect a range warning). See [transactions-v1.md](../transactions-v1.md):
 
 ```ts
 const client = await createClient().use(

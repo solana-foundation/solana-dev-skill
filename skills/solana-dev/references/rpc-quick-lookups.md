@@ -62,7 +62,7 @@ curl -s https://api.mainnet-beta.solana.com -X POST \
   -d '{"jsonrpc":"2.0","id":1,"method":"getTransaction","params":["<SIGNATURE>",{"maxSupportedTransactionVersion":1,"encoding":"jsonParsed"}]}'
 ```
 
-Always include `maxSupportedTransactionVersion` — without it, v0 transactions return an error. Use the integer `1`, not `0`: once the v1 format activates ([SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)), `0` fails on a v1 transaction exactly like omitting the parameter, and on `getBlock` one v1 transaction fails the entire block. See [transactions-v1.md](transactions-v1.md).
+Always include `maxSupportedTransactionVersion` — without it, any versioned transaction returns an error. Use the integer `1`, not `0`: v1 transactions ([SIMD-0385](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0385-transaction-v1.md)) are live on mainnet, `0` fails on one exactly like omitting the parameter, and on `getBlock` a single v1 transaction fails the entire block. See [transactions-v1.md](transactions-v1.md).
 
 ### Token account balance — `getTokenAccountBalance`
 

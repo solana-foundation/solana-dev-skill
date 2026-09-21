@@ -25,13 +25,16 @@ npm install @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer
 ```
 
 ```ts
-import { createClient } from '@solana/kit';
+import { createClient, lamports } from '@solana/kit';
 import { solanaRpc } from '@solana/kit-plugin-rpc';
 import { signer } from '@solana/kit-plugin-signer';
 
 const client = createClient()
   .use(signer(mySigner)) // sets payer + identity to the same keypair
-  .use(solanaRpc({ rpcUrl: 'https://api.mainnet-beta.solana.com' }));
+  .use(solanaRpc({
+    rpcUrl: 'https://api.mainnet-beta.solana.com',
+    transactionConfig: { version: 1, priorityFeeLamports: lamports(5_000n) }, // v1 by default for new code
+  }));
 
 await client.sendTransaction([myInstruction]);
 ```
@@ -46,7 +49,7 @@ await client.sendTransaction([myInstruction]);
 | `rpcSubscriptionsUrl` | `string` | WS endpoint (defaults to `rpcUrl` with `http`→`ws`) |
 | `rpcConfig` | `object` | Forwarded to `createSolanaRpc` |
 | `rpcSubscriptionsConfig` | `object` | Forwarded to `createSolanaRpcSubscriptions` |
-| `transactionConfig` | `object` | Tx planner options (priority fees, etc.) |
+| `transactionConfig` | `object` | Planner/executor options, discriminated on `version`. `{ version: 1, priorityFeeLamports?, estimateResourceLimits? }` for v1 (default for new code); `{ version?: 'legacy' \| 0, microLamportsPerComputeUnit? }` for historical formats. Omitting `version` yields v0 |
 | `maxConcurrency` | `number` | Concurrent tx limit (default: 10) |
 | `skipPreflight` | `boolean` | Always skip preflight (default: false) |
 
@@ -57,16 +60,18 @@ import { createClient } from '@solana/kit';
 import { solanaMainnetRpc, solanaDevnetRpc, solanaLocalRpc } from '@solana/kit-plugin-rpc';
 import { signer, signerFromFile } from '@solana/kit-plugin-signer';
 
+const transactionConfig = { version: 1 } as const;
+
 // Mainnet — type-narrowed; airdrop is NOT exposed
-const main = createClient().use(signer(s)).use(solanaMainnetRpc({ rpcUrl: '...' }));
+const main = createClient().use(signer(s)).use(solanaMainnetRpc({ rpcUrl: '...', transactionConfig }));
 
 // Devnet — defaults to https://api.devnet.solana.com, includes airdrop
-const dev = createClient().use(signer(s)).use(solanaDevnetRpc());
+const dev = createClient().use(signer(s)).use(solanaDevnetRpc({ transactionConfig }));
 
 // Local — defaults to http://127.0.0.1:8899, includes airdrop
 const local = await createClient()
   .use(signerFromFile('~/.config/solana/id.json'))
-  .use(solanaLocalRpc());
+  .use(solanaLocalRpc({ transactionConfig }));
 ```
 
 ### LiteSVM Test Client
@@ -82,7 +87,7 @@ import { airdropSigner, generatedSigner } from '@solana/kit-plugin-signer';
 
 const client = await createClient()
   .use(generatedSigner())
-  .use(litesvm())
+  .use(litesvm({ transactionConfig: { version: 1 } }))
   .use(airdropSigner(lamports(1_000_000_000n)));
 
 client.svm.setAccount(myTestAccount);
@@ -91,7 +96,7 @@ client.svm.addProgramFromFile(myProgramAddress, 'program.so');
 await client.sendTransaction([myInstruction]);
 ```
 
-`litesvm()` is Node.js only. Browser/React Native builds throw.
+`litesvm()` is Node.js only. Browser/React Native builds throw. Its v1 planner writes maximum resource limits instead of estimating; override with `computeUnitLimit` / `loadedAccountsDataSizeLimit` in `transactionConfig`.
 
 ### Surfpool Test Client (`@solana/surfpool/kit`)
 
@@ -133,15 +138,26 @@ import { walletSigner } from '@solana/kit-plugin-wallet';
 
 const client = createClient()
   .use(walletSigner({ chain: 'solana:mainnet' }))
-  .use(solanaRpc({ rpcUrl: 'https://api.mainnet-beta.solana.com' })); // bundles tx planning + sending
+  .use(solanaRpc({
+    rpcUrl: 'https://api.mainnet-beta.solana.com',
+    transactionConfig: { version: 1 },
+  })); // bundles tx planning + sending
 
 // Discover and connect a Wallet Standard wallet
 const { wallets } = client.wallet.getState();
 await client.wallet.connect(wallets[0]);
 
+// Check the wallet signs v1 before sending it one
+const { connected } = client.wallet.getState();
+if (!connected?.supportedTransactionVersions.has(1)) {
+  throw new Error('Wallet does not support transaction v1 yet — route through a version: 0 client');
+}
+
 // The connected wallet is now the payer/identity
 await client.sendTransaction([myInstruction]);
 ```
+
+`supportedTransactionVersions` (0.20+) is the intersection of what the wallet accepts across its signing features; a wallet that predates versioned transactions reports `Set(['legacy'])`. See [transactions-v1.md](../transactions-v1.md#wallets).
 
 Variants mirror the signer plugin roles: `walletSigner` (both roles), `walletPayer`, `walletIdentity`, plus `walletWithoutSigner` for discovery/connection state only. In React apps, use the hooks from `@solana/kit-plugin-wallet/react` together with `ClientProvider` from `@solana/react` — see [react.md](react.md).
 
