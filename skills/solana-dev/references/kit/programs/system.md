@@ -125,9 +125,13 @@ const draft = pipe(
   fillTransactionMessageProvisoryResourceLimits,
 );
 
-const message = await estimateAndSetResourceLimitsFactory(
+let message = await estimateAndSetResourceLimitsFactory(
   estimateResourceLimitsFactory({ rpc }),
 )(draft);
+
+// Resource estimation takes time, so refresh the transaction lifetime before signing.
+const { value: freshBlockhash } = await rpc.getLatestBlockhash().send();
+message = setTransactionMessageLifetimeUsingBlockhash(freshBlockhash, message);
 
 const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
 const signed = await signTransactionMessageWithSigners(message);
