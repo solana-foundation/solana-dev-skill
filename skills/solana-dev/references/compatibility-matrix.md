@@ -316,7 +316,7 @@ Full reference: [transactions-v1.md](./transactions-v1.md). Feature gate `txv1aq
 | `@solana/web3.js` (v3, `@rc`) | **3.0.0-rc.3** | `compileToV1Message`; send and read |
 | `@solana/web3.js` 1.x | **1.99.0** | ⚠️ Read-only — 1.x never sends v1 |
 | `solders` (Python) | **0.29.0** | Read and send. Earlier releases have neither |
-| `solana-go` | unreleased | [PR #481](https://github.com/solana-foundation/solana-go/pull/481) |
+| `solana-go` | **v2.0.0** | [PR #481](https://github.com/solana-foundation/solana-go/pull/481) |
 | `yellowstone-grpc-proto` (Rust) | **12.6.0** | First release whose generated code has `Message.config` (field 7) |
 | `yellowstone-grpc-client` (Rust) | **13.3.0** | 12.x connects, but pair either with a direct 12.6.0 proto pin |
 | yellowstone-grpc geyser plugin | **15.1.1** | Earlier builds downgrade v1 to v0 before it reaches the wire |

@@ -65,6 +65,8 @@ const { context } = await client.system.instructions
 
 The planner reserves both limits; the executor estimates them with one simulation. A planned v1 message therefore contains provisory zeroes, while the sent transaction contains measured values. Keep `estimateResourceLimits` enabled unless you deliberately set both limits yourself. Disabling it without setting them causes `MaxLoadedAccountsDataSizeExceeded`.
 
+The executor adds a safety margin to the measured compute unit limit only. The loaded accounts data size is written exactly as simulated, so an account created between simulation and landing can push the transaction over it — see [Sizing the resource limits](#sizing-the-resource-limits).
+
 `heapSize` has no planner option. A transaction that needs a larger heap goes through `setTransactionMessageConfig` on a message you plan yourself — see [Sending v1 manually with `pipe()`](#sending-v1-manually-with-pipe).
 
 **LiteSVM**'s planner writes the *maximum* limits (1.4M CU, 64 MiB) by default instead of estimating, and lets you override them:
@@ -378,7 +380,7 @@ Matching readers: `getTransactionMessageComputeUnitLimit`, `getTransactionMessag
 | `@solana/web3.js` 1.x | **`1.99.0`** — **read only**. 1.x never builds, signs, serializes, or sends v1; migrate to kit 8 for that |
 | Rust `solana-*` | **4.x** (`solana-message` 4.1.0 added `v1::Message`; 4.2.x adds the inherent `Message::serialize()`). Anchor 1.1.x still pins the 3.x crate line for *programs*; the 4.x requirement is client-side |
 | Python `solders` | 0.29.0+ — read and send. Earlier releases have neither |
-| Go `solana-go` | Unreleased — [PR #481](https://github.com/solana-foundation/solana-go/pull/481) adds `solana.TransactionConfig`, `solana.MessageVersionV1`, and `solana.TransactionV1Config` |
+| Go `solana-go` | **v2.0.0+** — [PR #481](https://github.com/solana-foundation/solana-go/pull/481) adds `solana.TransactionConfig`, `solana.MessageVersionV1`, and `solana.TransactionV1Config` |
 | Anza CLI / Agave | **4.2.2** is the mainnet activation release; 4.2.0+ for v1 and `maxSupportedTransactionVersion: 1` |
 
 Runnable examples in all four languages — sending, decoding, reading blocks, indexing over gRPC, plus offline and live tests: [`solana-foundation/transaction-v1-examples`](https://github.com/solana-foundation/transaction-v1-examples).

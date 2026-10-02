@@ -2,6 +2,11 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
+## 2.5.1 — 2026-10-02
+
+- transactions-v1.md and compatibility-matrix.md: `solana-go` v1 support shipped in v2.0.0.
+- transactions-v1.md: the plugin-client executor margins the measured compute unit limit but writes the loaded accounts data size exactly as simulated.
+
 ## 2.5.0 — 2026-09-18
 
 Transaction v1 is now the default transaction version, built through plugin clients.
