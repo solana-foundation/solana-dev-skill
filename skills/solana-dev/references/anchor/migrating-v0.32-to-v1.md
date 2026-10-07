@@ -79,14 +79,14 @@ avm use 1.0.0
 
 Otherwise bootstrap via `cargo`:
 ```bash
-cargo install avm --git https://github.com/solana-foundation/anchor --tag v1.0.0 --locked
+cargo install avm --git https://github.com/otter-sec/anchor --tag v1.0.0 --locked
 avm install 1.0.0
 avm use 1.0.0
 ```
 
 **Without AVM** — install `anchor-cli` directly:
 ```bash
-cargo install --git https://github.com/solana-foundation/anchor --tag v1.0.0 anchor-cli --locked
+cargo install --git https://github.com/otter-sec/anchor --tag v1.0.0 anchor-cli --locked
 ```
 
 **Update Solana CLI** (if below 3.x):

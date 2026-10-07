@@ -227,8 +227,8 @@ pub token_program: Interface<'info, TokenInterface>,
 Heap-allocated, read-only account access for efficient memory usage:
 
 ```rust
-// Cargo.toml — match the version to your Anchor CLI (1.1.x current)
-anchor-lang = { version = "1.1.2", features = ["lazy-account"] }
+// Cargo.toml — match the version to your Anchor CLI (1.2.x current)
+anchor-lang = { version = "1.2.1", features = ["lazy-account"] }
 
 // Usage
 pub account: LazyAccount<'info, CustomAccountType>,
@@ -239,7 +239,7 @@ pub fn handler(ctx: Context<MyInstruction>) -> Result<()> {
 }
 ```
 
-**Note:** LazyAccount is read-only. After CPIs, use `unload()` to refresh cached values.
+**Note:** LazyAccount is read-only. After CPIs, use `unload()` to refresh cached values. Since 1.2.0, `unload()` re-runs the owner and discriminator checks, so it returns an error if a CPI reassigned or closed the account.
 
 ## Zero-Copy Accounts
 
@@ -272,11 +272,13 @@ pub fn batch_operation(ctx: Context<BatchOp>, amounts: Vec<u64>) -> Result<()> {
 
 ## Version Management
 
-- Current stable: **Anchor 1.1.x** (latest: 1.1.2, Jun 2026). CI-tested Solana CLI pairing: 3.1.10.
-- Use AVM (Anchor Version Manager) for reproducible builds. Install AVM from git (`cargo install --git https://github.com/solana-foundation/anchor avm --force` — the `avm` crate on crates.io is unrelated), then `avm install latest` / `avm use latest`. AVM supports `avm self-update` and pre-releases (`avm install latest-pre-release`).
+- Current stable: **Anchor 1.2.x** (latest: 1.2.1, Oct 2026). CI-tested Solana CLI pairing: 4.1.2.
+- The repo moved to [otter-sec/anchor](https://github.com/otter-sec/anchor); `solana-foundation/anchor` redirects. Crate names (`anchor-lang`, `anchor-cli`, ...) and the npm package (`@anchor-lang/core`) are unchanged.
+- Use AVM (Anchor Version Manager) for reproducible builds. Install AVM from git (`cargo install --git https://github.com/otter-sec/anchor avm --force` — the `avm` crate on crates.io is unrelated), then `avm install latest` / `avm use latest`. AVM supports `avm self-update` and pre-releases (`avm install latest-pre-release`).
 - Keep Solana CLI + Anchor versions aligned in CI and developer setup
 - Pin versions in `Anchor.toml`
 - Anchor 1.1.2 tightened inter-crate pins: keep all `anchor-*` crates on the exact same version
+- `anchor build --arch <sbpf-arch> --tools-version <platform-tools>` (1.2.0+) selects the SBPF architecture and platform-tools version for the build
 
 ## Compatibility Notes for Anchor 0.32.0
 
@@ -329,7 +331,7 @@ See [no-dna.org](https://no-dna.org) for the `NO_DNA` standard.
 
 ### Anchor v0.32 → v1
 
-- **Dependencies** — bump `anchor-lang` and `anchor-spl` to `^1` (latest: 1.1.2), and all `solana-*` crates to `^3`.
+- **Dependencies** — bump `anchor-lang` and `anchor-spl` to `^1` (latest: 1.2.1), and all `solana-*` crates to `^3`.
 - **CPI context** — `CpiContext::new` now takes a program ID (`Pubkey`) instead of a program `AccountInfo`. Remove the program account from the accounts struct.
 - **TypeScript** — replace `@coral-xyz/anchor` with `@anchor-lang/core`.
 - **IDL** — IDL management is being moved off program, **mandatory** actions required.
@@ -343,3 +345,12 @@ See [anchor/migrating-v0.32-to-v1.md](../anchor/migrating-v0.32-to-v1.md) for th
 - anchor-client supports versioned transactions
 - New: `verifiedBuild` (OtterSec verify.osec.io), multiple named scripts in `Anchor.toml`, `anchor idl fetch-historical`
 - 1.1.2: keep all `anchor-*` crates pinned to the same exact version
+
+### Anchor 1.1 → 1.2
+
+- No entries under Breaking in the 1.2.0 or 1.2.1 CHANGELOG. MSRV stays 1.89, Node stays ≥ 20.18; CI moved to Solana CLI 4.1.2 and Surfpool 1.5.0.
+- Stricter checks that can surface latent bugs: all-zero account discriminators are rejected, `LazyAccount::unload()` re-checks owner and discriminator, and undersized zero-copy data returns an error instead of panicking.
+- Generated CPI and client account metas now honor `is_signer`, so PDA signers work through them.
+- `anchor build` also writes a TypeScript error constants file from the IDL; `anchor-spl` adds pausable mint, `create_native_mint`, `initialize_non_transferable_mint`, `reallocate`, `withdraw_excess_lamports` and `token_metadata_remove_key`, and deprecates the broken `cpi_guard_enable/disable`.
+- 1.2.1 adds the opt-in `solana-v4` feature for the 4.x `solana-*` crates; `solana-v3` stays the default. The two are mutually exclusive, so opting in means `default-features = false, features = ["solana-v4", ...]` on every `anchor-*` dependency. See [compatibility-matrix.md](../compatibility-matrix.md#agave-4x-vs-sdk-crate-versions-oct-2026).
+- `@anchor-lang/core` 1.2.x does not read transaction v1 yet ([#4977](https://github.com/otter-sec/anchor/pull/4977) open); use Kit or Codama clients for v1 flows.

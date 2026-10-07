@@ -378,7 +378,8 @@ Matching readers: `getTransactionMessageComputeUnitLimit`, `getTransactionMessag
 | `@solana/kit-plugin-wallet` | **0.20.0+** — `connected.supportedTransactionVersions` typed to include `1` (via `@solana/wallet-standard-features` 1.5) |
 | `@solana/web3.js@rc` (v3) | **`3.0.0-rc.3`** — `compileToV1Message`, send and read |
 | `@solana/web3.js` 1.x | **`1.99.0`** — **read only**. 1.x never builds, signs, serializes, or sends v1; migrate to kit 8 for that |
-| Rust `solana-*` | **4.x** (`solana-message` 4.1.0 added `v1::Message`; 4.2.x adds the inherent `Message::serialize()`). Anchor 1.1.x still pins the 3.x crate line for *programs*; the 4.x requirement is client-side |
+| `@anchor-lang/core` | **0.32.2 / 0.31.2** read v1 through web3.js 1.99.0. 1.x through 1.2.1 still fetch with `maxSupportedTransactionVersion: 0`; v1 support is [#4977](https://github.com/otter-sec/anchor/pull/4977) (open) |
+| Rust `solana-*` | **4.x** (`solana-message` 4.1.0 added `v1::Message`; 4.2.x adds the inherent `Message::serialize()`). Anchor programs default to the 3.x crate line; Anchor 1.2.1 can opt into 4.x with the `solana-v4` feature. The 4.x requirement is client-side |
 | Python `solders` | 0.29.0+ — read and send. Earlier releases have neither |
 | Go `solana-go` | **v2.0.0+** — [PR #481](https://github.com/solana-foundation/solana-go/pull/481) adds `solana.TransactionConfig`, `solana.MessageVersionV1`, and `solana.TransactionV1Config` |
 | Anza CLI / Agave | **4.2.2** is the mainnet activation release; 4.2.0+ for v1 and `maxSupportedTransactionVersion: 1` |

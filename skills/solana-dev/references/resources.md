@@ -40,7 +40,7 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 ## Program Frameworks
 
 ### Anchor
-- [Anchor Repository](https://github.com/solana-foundation/anchor)
+- [Anchor Repository](https://github.com/otter-sec/anchor)
 - [Anchor Documentation](https://www.anchor-lang.com/)
 - [Anchor Version Manager (AVM)](https://www.anchor-lang.com/docs/avm)
 
