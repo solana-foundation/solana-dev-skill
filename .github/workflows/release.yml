@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: [skills/solana-dev/SKILL.md]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate against the Agent Skills spec
+        run: |
+          pip install pyyaml==6.0.3
+          ./scripts/validate-skills.sh
+
+      # Publishes a GitHub Release whenever `metadata.version` in SKILL.md names a version that
+      # has no tag yet. The attached zip holds only the skill folder, with SKILL.md one level
+      # down, which is the layout the Claude Console skill uploader expects. The repo's own
+      # "Download ZIP" nests SKILL.md too deep for it to find.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -nE 's/^  version: "([^"]+)"$/\1/p' skills/solana-dev/SKILL.md)
+          test -n "$version"
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag already tagged"
+            exit 0
+          fi
+          awk -v h="## $version " 'index($0, h) == 1 {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "CHANGELOG.md has no entry for $version"
+            exit 1
+          fi
+          (cd skills && zip -rq ../solana-dev.zip solana-dev)
+          gh release create "$tag" solana-dev.zip --target "$GITHUB_SHA" --title "$tag" --notes-file notes.md --generate-notes
