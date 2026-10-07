@@ -33,8 +33,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=$(sed -nE 's/^  version: "([^"]+)"$/\1/p' skills/solana-dev/SKILL.md)
-          test -n "$version"
+          version=$(python3 -c "import yaml; print(yaml.safe_load(open('skills/solana-dev/SKILL.md').read().split('---')[1])['metadata']['version'])")
           tag="v$version"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
             echo "$tag already tagged"
