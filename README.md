@@ -72,6 +72,9 @@ skills/solana-dev/
     ├── testing.md                   # Testing (Surfpool/LiteSVM/Mollusk)
     ├── idl-codegen.md               # IDL and client generation
     ├── payments.md                  # Payments (Kit, Solana Pay, Kora)
+    ├── kora.md                      # Kora paymaster: gasless / sponsored fees, operator setup
+    ├── keychain.md                  # Solana Keychain: server-side signing (KMS, Vault, MPC, managed wallets)
+    ├── mosaic.md                    # Mosaic: Token-2022 issuance templates, sRFC-37 allow/block lists
     ├── security.md                  # Security vulnerabilities & prevention
     ├── concepts.md                  # Runtime concepts (rent, PDAs, entrypoint, wire format)
     ├── resources.md                 # Curated reference links
@@ -105,6 +108,7 @@ Once installed, your agent will automatically use this skill when you ask about:
 - Local testing (Surfpool, LiteSVM, Mollusk)
 - Security hardening and audit-style reviews
 - Surfpool local network setup and cheatcodes
+- Gasless / sponsored-fee transactions (Kora), server-side signing (Solana Keychain), and regulated token issuance (Mosaic)
 - **Toolchain issues** (version mismatches, GLIBC errors, dependency conflicts)
 - **Migration** between Anchor/Solana CLI versions, and web3.js v1 → v3
 
