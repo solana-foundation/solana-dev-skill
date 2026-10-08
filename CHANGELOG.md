@@ -2,6 +2,10 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
+## 2.6.1 — 2026-10-08
+
+- Patch release to exercise the automated release workflow. No skill content changes.
+
 ## 2.6.0 — 2026-10-07
 
 Anchor 1.2.1 is now the recommended version, and Anchor links point at its new home, `otter-sec/anchor`.
