@@ -2,6 +2,15 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
+## 2.6.0 — 2026-10-07
+
+Anchor 1.2.1 is now the recommended version, and Anchor links point at its new home, `otter-sec/anchor`.
+
+- compatibility-matrix.md: 1.2.x rows (Solana CLI 4.1.2 and Surfpool 1.5.0 in Anchor CI, MSRV 1.89, Node ≥20.18); 1.1.x kept as the previous line. The 1.2.1 `solana-v4` cargo feature for the 4.x `solana-*` crates is documented; `solana-v3` stays the default and the two are mutually exclusive.
+- compatibility-matrix.md and transactions-v1.md: `@anchor-lang/core` 0.32.2 and 0.31.2 read v1 transactions through web3.js 1.99.0 and are published only under that name; 1.x through 1.2.1 do not read v1 yet.
+- programs/anchor.md: new "Anchor 1.1 → 1.2" notes (stricter discriminator and `LazyAccount` checks, `is_signer` in generated metas, `anchor build --arch` / `--tools-version`, new `anchor-spl` helpers).
+- Install and build-from-source commands use `github.com/otter-sec/anchor` and the v1.2.1, v0.32.2 and v0.31.2 tags (common-errors.md, compatibility-matrix.md, programs/anchor.md, anchor/migrating-v0.32-to-v1.md, resources.md).
+
 ## 2.5.1 — 2026-10-02
 
 - transactions-v1.md and compatibility-matrix.md: `solana-go` v1 support shipped in v2.0.0.

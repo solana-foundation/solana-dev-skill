@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: "2.5.1"
+  version: "2.6.0"
 ---
 
 # Solana Development Skill
@@ -59,7 +59,7 @@ Use this Skill when the user asks for:
 - Do not let legacy class types leak across the entire app; contain them to adapter modules.
 
 4) **Programs**
-- Default: Anchor 1.1.x (fast iteration, IDL generation, mature tooling).
+- Default: Anchor 1.2.x (fast iteration, IDL generation, mature tooling).
 - Performance/footprint: Pinocchio (0.11+) when you need CU optimization, minimal binary size,
   zero dependencies, or fine-grained control over parsing/allocations.
 

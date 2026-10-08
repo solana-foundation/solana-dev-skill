@@ -367,7 +367,7 @@ NO_DNA=1 surfpool start --rpc-url https://my-rpc-provider.com
 
 ### Anchor Projects
 
-Anchor 1.0+ uses surfpool as the default test runner: `anchor test` and `anchor localnet` spawn a surfnet automatically (current Anchor: 1.1.2, paired with Solana CLI 3.1.10). Running `surfpool start` in a project root detects both **Anchor and Pinocchio** projects and scaffolds txtx deployment runbooks (program names read from `Anchor.toml`).
+Anchor 1.0+ uses surfpool as the default test runner: `anchor test` and `anchor localnet` spawn a surfnet automatically (current Anchor: 1.2.1, CI-tested with Solana CLI 4.1.2 and Surfpool 1.5.0). Running `surfpool start` in a project root detects both **Anchor and Pinocchio** projects and scaffolds txtx deployment runbooks (program names read from `Anchor.toml`).
 
 For older test suites written against `solana-test-validator` semantics:
 

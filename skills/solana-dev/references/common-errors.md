@@ -33,14 +33,14 @@ anchor: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.39' not found (require
 1. **Upgrade OS** (best): Ubuntu 24.04+ has GLIBC 2.39
 2. **Build from source:**
    ```bash
-   # For Anchor 1.1.x (current):
-   cargo install --git https://github.com/solana-foundation/anchor --tag v1.1.2 anchor-cli
+   # For Anchor 1.2.x (current):
+   cargo install --git https://github.com/otter-sec/anchor --tag v1.2.1 anchor-cli
 
    # For Anchor 0.31.x:
-   cargo install --git https://github.com/solana-foundation/anchor --tag v0.31.1 anchor-cli
+   cargo install --git https://github.com/otter-sec/anchor --tag v0.31.2 anchor-cli
 
    # For Anchor 0.32.x:
-   cargo install --git https://github.com/solana-foundation/anchor --tag v0.32.1 anchor-cli
+   cargo install --git https://github.com/otter-sec/anchor --tag v0.32.2 anchor-cli
    ```
 3. **Use Docker:**
    ```bash
@@ -181,7 +181,7 @@ error[E0599]: no method named `local_file` found for struct `proc_macro2::Span`
 **Cause:** proc-macro2 API change in newer nightly Rust.
 
 **Solutions:**
-1. Upgrade to Anchor 0.31.1+ (fixed in [#3663](https://github.com/solana-foundation/anchor/pull/3663))
+1. Upgrade to Anchor 0.31.1+ (fixed in [#3663](https://github.com/otter-sec/anchor/pull/3663))
 2. Use stable Rust: `RUSTUP_TOOLCHAIN=stable anchor build`
 3. Pin proc-macro2: `cargo update -p proc-macro2 --precise 1.0.86`
 

@@ -13,7 +13,7 @@ This skill gives your coding agent deep knowledge of the current Solana developm
 - **SDK**: `@solana/kit` 8 plugin clients (`createClient()` + `.use()`), building transaction v1 by default
 - **UI**: Wallet Standard connection via `@solana/kit-plugin-wallet` + `@solana/react`
 - **Legacy Interop**: web3.js v3 (RC) — the classic API rebuilt on Kit internals, as the migration target for v1 codebases
-- **Programs**: Anchor 1.1.x (default), Pinocchio 0.11+ for high-performance needs
+- **Programs**: Anchor 1.2.x (default), Pinocchio 0.11+ for high-performance needs
 - **Testing**: Surfpool for integration tests (mainnet forking, cheatcodes, embedded SDK), LiteSVM/Mollusk for unit tests
 - **Codegen**: Codama-first IDL and client generation
 - **Security**: Comprehensive vulnerability patterns and prevention
@@ -118,8 +118,8 @@ Once installed, your agent will automatically use this skill when you ask about:
 "Write Surfpool integration tests for my token transfer flow"
 "Review this program for security issues"
 "I'm getting GLIBC_2.39 not found when running anchor"
-"Help me upgrade from Anchor 0.32 to 1.1"
-"What versions of Solana CLI work with Anchor 1.1?"
+"Help me upgrade from Anchor 0.32 to 1.2"
+"What versions of Solana CLI work with Anchor 1.2?"
 "Run Surfpool and create an account with 100 SOL and USDC"
 ```
 
@@ -131,7 +131,7 @@ This skill encodes opinionated best practices:
 |-------|---------------|-------------|
 | Client SDK | @solana/kit 8 (plugin clients, transaction v1) | web3.js v3 RC (legacy migration target) |
 | Wallet / UI | @solana/kit-plugin-wallet + @solana/react | Wallet Standard hooks directly |
-| Program Framework | Anchor 1.1.x | Pinocchio 0.11+ (performance) |
+| Program Framework | Anchor 1.2.x | Pinocchio 0.11+ (performance) |
 | Unit Testing | LiteSVM / Mollusk | — |
 | Integration Testing | Surfpool (CLI or embedded @solana/surfpool) | solana-test-validator |
 | Client Generation | Codama | — |
