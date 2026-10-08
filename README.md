@@ -39,6 +39,10 @@ cd solana-dev-skill
 ./install.sh --link     # symlink instead of copy (auto-updates with git pull)
 ```
 
+### Desktop app upload
+
+Download `solana-dev.zip` from the [latest release](https://github.com/solana-foundation/solana-dev-skill/releases/latest/download/solana-dev.zip) and upload it as a custom skill in your application. Don't use GitHub's "Code → Download ZIP": that archive nests `SKILL.md` too deep for the uploader to find.
+
 ### Manual install
 
 Copy (or symlink) `skills/solana-dev/` into your agent's skills directory:
