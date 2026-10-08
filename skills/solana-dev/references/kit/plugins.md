@@ -189,7 +189,7 @@ In most apps both roles are the same keypair, so **default to the `signer*` vari
 
 | Plugin | Behavior |
 |---|---|
-| `signer(s)` / `payer(s)` / `identity(s)` | Install an existing `TransactionSigner` |
+| `signer(s)` / `payer(s)` / `identity(s)` | Install an existing `TransactionSigner` (including a Solana Keychain signer — see [keychain.md](../keychain.md)) |
 | `generatedSigner()` / `generatedPayer()` / `generatedIdentity()` | Async; generate a new keypair |
 | `generatedSignerWithSol(amount)` / `generatedPayerWithSol(amount)` / `generatedIdentityWithSol(amount)` | Async; generate + airdrop. Requires an airdrop function already on the client (for low-level composition, install `rpcAirdrop()` first). |
 | `signerFromFile(path)` / `payerFromFile(path)` / `identityFromFile(path)` | Async; load keypair from a JSON file |
@@ -328,7 +328,8 @@ await client.token.instructions
 
 | Package | Exports | Purpose | Code Example |
 |---------|---------|---------|--------------|
-| `@solana/kora` | `createKitKoraClient`, `koraPlugin` | Gasless transactions | https://github.com/solana-foundation/kora/blob/main/sdks/ts/src/kit/index.ts |
+| `@solana/keychain-kit-plugin` | `keychainSigner`, `keychainPayer`, `keychainIdentity` | Server-side signers (KMS, Vault, MPC, managed wallets) as client `payer` / `identity`; Kit 8.1+. See [keychain.md](../keychain.md) | https://github.com/solana-foundation/solana-keychain/tree/main/typescript/packages/kit-plugin |
+| `@solana/kora` | `createKitKoraClient`, `koraPlugin` (stable); `kora` from `@solana/kora/kit` (beta) | Gasless transactions. Targets Kit 6 (stable) / Kit 7 (beta) and builds v0. See [kora.md](../kora.md) | https://github.com/solana-foundation/kora/blob/ts-sdk-v0.2.1/sdks/ts/src/kit/index.ts |
 
 ---
 

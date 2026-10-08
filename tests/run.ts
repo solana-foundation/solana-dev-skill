@@ -182,6 +182,11 @@ const triggerCases: TestCase[] = [
   { prompt: "My indexer reports 0 priority fee for some transactions", expected: true },
   { prompt: "getBlock is failing with maxSupportedTransactionVersion", expected: true },
   { prompt: "What do I need to change to support 4096-byte Solana transactions?", expected: true },
+  { prompt: "Let my users pay Solana transaction fees in USDC instead of SOL", expected: true },
+  { prompt: "Set up Kora so my app can sponsor gas for users", expected: true },
+  { prompt: "Sign Solana transactions from my backend with AWS KMS", expected: true },
+  { prompt: "Use a Turnkey wallet as the fee payer for my Solana bot", expected: true },
+  { prompt: "Issue a USD stablecoin on Solana with a blocklist", expected: true },
   // ❌ Should NOT trigger
   { prompt: "Build me a React app", expected: false },
   { prompt: "How do I use the Claude API?", expected: false },
@@ -193,6 +198,7 @@ const triggerCases: TestCase[] = [
   { prompt: "Review my Python code", expected: false },
   { prompt: "How do I deploy to Vercel?", expected: false },
   { prompt: "Write a Rust CLI tool", expected: false },
+  { prompt: "Set up AWS KMS key rotation for my Node.js API", expected: false },
 ];
 
 function triggerEvaluator(text: string) {

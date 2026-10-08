@@ -27,12 +27,7 @@ Use the Solana Pay URL spec for request-based payments (point-of-sale, invoices,
 - Verify settlement server-side by finding the transaction via the `reference` key and validating recipient, mint, and amount from chain state.
 
 ## Kora (gasless / fee abstraction)
-Consider Kora when you need:
-- sponsored transactions (user doesn't pay gas)
-- users paying fees in tokens other than SOL
-- a trusted signing / paymaster component
-
-Kora ships a Kit plugin (`koraPlugin` / `createKitKoraClient` from `@solana/kora`).
+Use Kora when users shouldn't need SOL: sponsored fees, fees paid in USDC or another SPL token, or a policy-checked paymaster co-signing user transactions. See [kora.md](kora.md) for operator setup and security controls.
 
 ## UX and security checklist for payments
 - Always show recipient + amount + token clearly before signing.
