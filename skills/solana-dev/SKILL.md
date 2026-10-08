@@ -1,11 +1,11 @@
 ---
 name: solana-dev
-description: 'Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "fuzz my Solana program", "deploy to devnet", "send a v1 transaction", "support larger transactions", "fix maxSupportedTransactionVersion", or "explain Solana concepts" (rent, accounts, PDAs, CPIs). Also for program architecture — state layout, reducing compute units, throughput bottlenecks, instruction naming — and quick on-chain lookups via public RPC + curl (balance, transaction, token account). End-to-end playbook: wallet connection, Anchor/Pinocchio programs, Codama clients, Surfpool/LiteSVM/Mollusk testing, security review, and the v1 transaction format (SIMD-0385, 4096-byte transactions). Prefers @solana/kit 8 plugin clients (createClient + .use()) building transaction v1 by default, @solana/kit-plugin-wallet + @solana/react for wallets, web3.js v3 (RC) as the legacy migration target, and Surfpool for local networks.'
+description: 'Use when user asks to "build a Solana dapp", "write an Anchor program", "create a token", "debug Solana errors", "set up wallet connection", "test my Solana program", "fuzz my Solana program", "deploy to devnet", "send a v1 transaction", "support larger transactions", "fix maxSupportedTransactionVersion", or "explain Solana concepts" (rent, accounts, PDAs, CPIs). Also for program architecture (state layout, compute units, throughput, naming), quick on-chain lookups via public RPC + curl, gasless or sponsored-fee transactions (Kora), server-side signing with KMS/Turnkey/Privy/Fireblocks (Solana Keychain), and issuing stablecoins or allowlisted tokens (Mosaic). Covers wallets, Anchor/Pinocchio, Codama clients, Surfpool/LiteSVM/Mollusk testing, security review, and v1 transactions (SIMD-0385). Prefers @solana/kit 8 plugin clients building transaction v1 by default, @solana/kit-plugin-wallet + @solana/react for wallets, web3.js v3 (RC) as the legacy migration target, and Surfpool for local networks.'
 license: MIT
 compatibility: Requires Node.js 20.18+, Rust toolchain, Solana CLI, Anchor CLI
 metadata:
   author: Solana Foundation
-  version: "2.6.0"
+  version: "2.7.0"
 ---
 
 # Solana Development Skill
@@ -22,6 +22,7 @@ Use this Skill when the user asks for:
 - Local testing (Surfpool, LiteSVM, Mollusk) and fuzz testing (Trident, cargo-fuzz)
 - Security hardening and audit-style reviews
 - Confidential transfers (Token-2022 ZK extension)
+- Gasless / sponsored-fee transactions (Kora), server-side signing with KMS / MPC / managed wallets (Solana Keychain), regulated token issuance (Mosaic)
 - **Toolchain setup, version mismatches, GLIBC errors, dependency conflicts**
 - **Upgrading Anchor/Solana CLI versions, migration between versions**
 - **Migrating web3.js v1 code to web3.js v3 or Kit**
@@ -43,6 +44,9 @@ Use this Skill when the user asks for:
   common case). For fresh local/devnet signers, install the RPC/LiteSVM plugin after
   `generatedSigner()`, then fund with `airdropSigner(...)`. Reach for the role-specific variants
   (`payer()` + `identity()`) only when fees and authority must come from different keypairs.
+- Server-side signers (backends, bots, agents, treasuries) come from Solana Keychain, not keypair
+  files: `keychainSigner({ backend: 'aws-kms', ... })` from `@solana/keychain-kit-plugin` in place
+  of `signer()`. See [keychain.md](references/keychain.md).
 - Use `@solana-program/*` program plugins (e.g., `tokenProgram()`) for fluent instruction APIs.
 - Prefer Kit types (`Address`, `Signer`, transaction message APIs, codecs).
 
@@ -68,6 +72,14 @@ Use this Skill when the user asks for:
 - Integration tests: **Surfpool** — mainnet forking with lazy account cloning, 26 `surfnet_*` cheatcodes (time travel, account/token state, oracle scenarios, CU profiling), embeddable in-process via the `@solana/surfpool` SDK, and the default `anchor test` runner in Anchor 1.0+.
 - In TypeScript, boot the surfnet through the Kit plugin: `await createClient().use(surfpool())` from `@solana/surfpool/kit` installs a pre-funded payer, the RPC stack, and a typed `client.cheatcodes` — see [surfpool/kit-plugin.md](references/surfpool/kit-plugin.md).
 - Use solana-test-validator only when you need full validator runtime fidelity not emulated by Surfpool.
+
+6) **Solana Foundation tools (read the reference before writing code)**
+
+| Need | Tool | Reference |
+|---|---|---|
+| Users transact without SOL, or pay fees in USDC / an app token | Kora (paymaster) | [kora.md](references/kora.md) |
+| Sign from a server, bot, or agent with KMS, Vault, MPC custody, or managed wallets | Solana Keychain | [keychain.md](references/keychain.md) |
+| Issue a stablecoin, tokenized security, or allowlisted token with sRFC-37 compliance | Mosaic | [mosaic.md](references/mosaic.md) |
 
 ## Agent safety guardrails
 
@@ -186,6 +198,9 @@ Surfpool also ships its own MCP server (`surfpool mcp`, stdio) for driving local
 - Testing strategy (Surfpool/LiteSVM/Mollusk): [testing.md](references/testing.md)
 - IDLs + codegen: [idl-codegen.md](references/idl-codegen.md)
 - Payments: [payments.md](references/payments.md)
+- **Kora (gasless / fee sponsorship, paymaster operators):** [kora.md](references/kora.md)
+- **Solana Keychain (server-side signing: KMS, Vault, MPC, managed wallets):** [keychain.md](references/keychain.md)
+- **Mosaic (Token-2022 stablecoin / RWA templates, sRFC-37 allow/block lists):** [mosaic.md](references/mosaic.md)
 - Confidential transfers: [confidential-transfers.md](references/confidential-transfers.md)
 - Security checklist: [security.md](references/security.md)
 - Reference links: [resources.md](references/resources.md)

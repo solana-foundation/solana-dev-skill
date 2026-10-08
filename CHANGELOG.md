@@ -2,6 +2,16 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
+## 2.7.0 — 2026-10-08
+
+New references for three Solana tools, each scoped to when to use it, how it fits the Kit 8 / transaction v1 defaults, the verified happy path, and gotchas, with links to the Markdown versions of the solana.com docs for everything else.
+
+- kora.md: Kora paymaster.
+- keychain.md: Solana Keychain 2.0 for backend signers.
+- mosaic.md: Mosaic SDK 0.2.0. Template-to-extension table, sRFC-37 Token ACL and ABL model, and caveats: Kit 6, v0 only, sRFC-37 off by default.
+- SKILL.md: new "Solana Foundation tools" routing table, a Keychain line in the signer defaults, and description triggers for gasless transactions, server-side signing and stablecoin issuance.
+
+
 ## 2.6.0 — 2026-10-07
 
 Anchor 1.2.1 is now the recommended version, and Anchor links point at its new home, `otter-sec/anchor`.

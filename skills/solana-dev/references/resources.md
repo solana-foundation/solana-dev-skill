@@ -81,10 +81,19 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 - [SPL Token Documentation](https://spl.solana.com/token)
 - [Token-2022 Documentation](https://spl.solana.com/token-2022)
 - [Metaplex Documentation](https://developers.metaplex.com/)
+- [Mosaic (Token-2022 issuance templates)](https://github.com/solana-foundation/mosaic)
+- [sRFC-37 Token ACL](https://github.com/solana-foundation/SRFCs/discussions/2)
 
 ## Payments
-- [Kora Documentation](https://solana.com/docs/tools/kora)
+- [Kora Documentation](https://solana.com/docs/tools/kora) ([Markdown](https://solana.com/docs/tools/kora.md))
+- [Kora Repository](https://github.com/solana-foundation/kora)
+- [Fee abstraction guide](https://solana.com/docs/payments/send-payments/payment-processing/fee-abstraction)
 - [Solana Pay](https://docs.solanapay.com/)
+
+## Signing Infrastructure
+- [Solana Keychain Documentation](https://solana.com/docs/tools/keychain) ([Markdown](https://solana.com/docs/tools/keychain.md))
+- [Solana Keychain Repository](https://github.com/solana-foundation/solana-keychain)
+- [Signing in production](https://solana.com/docs/core/transactions/signing-in-production)
 
 ## Security
 - [Blueshift Program Security Course](https://learn.blueshift.gg/en/courses/program-security)

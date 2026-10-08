@@ -13,6 +13,8 @@ import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 
 Token-2022 extends the base Token program with configurable extensions. For a full guide to available extensions and their use cases, see the [Token Extensions documentation](https://solana.com/docs/tokens/extensions).
 
+For stablecoins, tokenized securities, or allowlisted tokens with sRFC-37 compliance, Mosaic packages the extension set and authority wiring as templates. Check its Kit-version caveats in [mosaic.md](../../mosaic.md) first.
+
 ## When to Use Token-2022 vs Token
 
 | Use Token-2022 | Use Token |
