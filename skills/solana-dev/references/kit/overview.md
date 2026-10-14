@@ -313,7 +313,7 @@ See [codama.md](codama.md) for naming conventions and patterns.
 | `@solana/transactions` | Compile/sign/serialize |
 | `@solana/transaction-messages` | Build tx messages |
 | `@solana/signers` | Signing abstraction |
-| `@solana/keychain` | Common Signing Interface for external signers |
+| `@solana/keychain` | Server-side signing across KMS, Vault, MPC and managed-wallet backends (`createKeychainSigner`). Kit client plugins in `@solana/keychain-kit-plugin`; see [keychain.md](../keychain.md) |
 | `@solana/instruction-plans` | Multi-instruction batching |
 | `@solana/errors` | Error identification/decoding |
 | `@solana/functional` | Pipe and compose utilities |
