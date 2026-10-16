@@ -85,7 +85,7 @@ description: Authoritative Solana learning platforms, documentation, tooling ref
 
 ## Payments
 - [Kora Documentation](https://solana.com/docs/tools/kora)
-- [Solana Pay](https://docs.solanapay.com/)
+- [Solana Pay](https://solana.com/docs/tools/solana-pay)
 
 ## Security
 - [Blueshift Program Security Course](https://learn.blueshift.gg/en/courses/program-security)

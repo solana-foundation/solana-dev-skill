@@ -28,24 +28,8 @@ Use the Solana Pay URL spec for request-based payments (point-of-sale, invoices,
 
 ## Retry and fulfillment boundaries
 
-- Persist the authorized order terms and retain each signed transaction's
-  signature before submission. A timeout does not prove failure.
-- Rebroadcasting the same signed transaction preserves its signature. Rebuilding
-  with a different recent blockhash and signing again creates a different
-  transaction; reusing the memo or reference does not make it the same payment.
-- Before rebuilding after expiry, reconcile the original signature and matching
-  settlement. Missing RPC history is inconclusive; do not automatically pay again.
-- Atomically claim fulfillment in durable application state, and make fulfillment
-  retries idempotent. For payment deduplication across independently signed attempts,
-  one option is a payment program that atomically checks and consumes a stable
-  intent ID or sequence with the transfer. Bind it to the authorized payer and immutable terms;
-  a new ID or sequence is a new payment, not a retry.
-- Verify recipient, asset, amount, transaction success and required commitment
-  before fulfillment. A reference match alone is insufficient.
-
-See the [Solana Pay reference specification](https://docs.solanapay.com/spec),
-[Memo program semantics](https://www.solana-program.com/docs/memo), and
-[transaction structure](https://solana.com/docs/core/transactions).
+- Store the signature before submitting. On timeout, rebroadcast the same signed tx or reconcile it before re-signing; missing RPC history isn't proof of non-payment.
+- Make fulfillment idempotent (atomically claim the order in your DB). A reference match alone isn't enough: also require a successful tx at the required commitment.
 
 ## Kora (gasless / fee abstraction)
 Consider Kora when you need:
@@ -62,3 +46,9 @@ Kora ships a Kit plugin (`koraPlugin` / `createKitKoraClient` from `@solana/kora
 - Handle partial failures gracefully (transaction sent but not confirmed).
 - Provide clear error messages for common failure modes (insufficient balance, rejected signature).
 - Test settlement logic against Surfpool — set up buyer/merchant token accounts with `surfnet_setTokenAccount` and assert post-transaction balances (see [testing.md](testing.md)).
+
+## References
+
+- [Solana Pay](https://solana.com/docs/tools/solana-pay)
+- [Memo program](https://www.solana-program.com/docs/memo)
+- [Transaction structure](https://solana.com/docs/core/transactions)
