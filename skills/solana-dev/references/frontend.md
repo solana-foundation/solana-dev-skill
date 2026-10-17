@@ -121,15 +121,15 @@ The set is the intersection across the wallet's signing features, so a version a
 
 ## Sending transactions
 
-With the wallet plugin installed, `client.sendTransaction` plans a v1 transaction (per the client's `transactionConfig`), estimates its resource limits, asks the wallet to sign, and sends. Wrap it in `useAction` from `@solana/react` so pending/error state, abort-on-resend, and stale-while-revalidate come for free instead of hand-rolled `useState`:
+With the wallet plugin installed, `client.sendTransaction` plans a v1 transaction (per the client's `transactionConfig`), estimates its resource limits, asks the wallet to sign, and sends. Wrap it in `useSendTransaction` from `@solana/react` so pending/error state, abort-on-resend, and stale-while-revalidate come for free instead of hand-rolled `useState`:
 
 ```tsx
 'use client';
 
-import { address, sol, solToLamports } from '@solana/kit';
+import { isAddress, sol, solToLamports } from '@solana/kit';
 import { getTransferSolInstruction } from '@solana-program/system';
 import { useConnectedWallet } from '@solana/kit-plugin-wallet/react';
-import { useAction, useClient } from '@solana/react';
+import { useClient, useSendTransaction } from '@solana/react';
 import type { AppClient } from '@/app/providers';
 
 function TipButton({ to }: { to: string }) {
@@ -138,23 +138,26 @@ function TipButton({ to }: { to: string }) {
   // The client plans v1; a wallet that cannot sign v1 must not be asked to.
   const canSendV1 = connected?.supportedTransactionVersions.has(1) ?? false;
 
-  const { dispatch, isRunning, error, data: signature } = useAction(
-    async (signal: AbortSignal, recipient: string) => {
-      const ix = getTransferSolInstruction({
+  // Each dispatch gets a fresh AbortSignal; resending aborts the in-flight send
+  const { dispatch, isRunning, error, data } = useSendTransaction(client);
+  const signature = data?.context.signature;
+  const recipient = isAddress(to) ? to : null;
+
+  const tip = () => {
+    if (!recipient) return;
+    dispatch([
+      getTransferSolInstruction({
         source: client.payer,
-        destination: address(recipient),
+        destination: recipient,
         // `sol()` returns a fixed-point value; instructions take Lamports
         amount: solToLamports(sol('0.01')),
-      });
-      // Forward the signal so a superseded send is actually cancelled
-      const result = await client.sendTransaction([ix], { abortSignal: signal });
-      return result.context.signature;
-    },
-  );
+      }),
+    ]);
+  };
 
   return (
     <>
-      <button disabled={isRunning || !canSendV1} onClick={() => dispatch(to)}>
+      <button disabled={isRunning || !canSendV1 || !recipient} onClick={tip}>
         {isRunning ? 'Sending…' : error ? 'Retry' : 'Tip 0.01 SOL'}
       </button>
       {signature ? <a href={`https://explorer.solana.com/tx/${signature}`}>View</a> : null}
@@ -163,7 +166,7 @@ function TipButton({ to }: { to: string }) {
 }
 ```
 
-Use `dispatch` in event handlers — it returns `void` and never throws, so it can't produce an unhandled rejection. Full hook semantics are in [kit/react.md](kit/react.md#useaction).
+Use `dispatch` in event handlers — it returns `void` and never throws, so it can't produce an unhandled rejection. Use `useSendTransactions` when the instructions may need splitting across transactions, and plain `useAction` for any other async flow (or a send wrapped in extra logic). Full hook semantics are in [kit/react.md](kit/react.md#useplantransaction--useplantransactions--usesendtransaction--usesendtransactions).
 
 ## Data fetching and subscriptions
 

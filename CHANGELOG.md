@@ -2,6 +2,13 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
+## 2.7.1 — 2026-10-16
+
+- frontend.md: the wallet send example uses `useSendTransaction` from `@solana/react` 8 in place of a hand-rolled `useAction` wrapper. `useAction` stays documented for other async flows, and `useSendTransactions` is pointed to for sends that may span several transactions.
+- testing.md: the LiteSVM plugin section targets `@solana/kit` 8.x.
+- payments.md: memos and reference accounts are described as payment correlation, not replay protection, since neither stops a second transfer in a separately signed transaction. A new "Retry and fulfillment boundaries" section covers storing the signature before submitting, rebroadcasting or reconciling before re-signing, and idempotent fulfillment that also requires a successful transaction at the required commitment. Adds Solana Pay, Memo program and transaction structure links.
+- resources.md: the Solana Pay link points at `solana.com/docs/tools/solana-pay`.
+
 ## 2.7.0 — 2026-10-14
 
 web3.js v3 is out of release candidate, solana-go's v1-transaction support is documented for both module lines, and the Rust toolchain and local-testing references move to Agave 4.3, LiteSVM 0.18, Mollusk 0.16 and Surfpool 1.6.1.
