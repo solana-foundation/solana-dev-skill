@@ -10,6 +10,10 @@ New references for three Solana tools, each scoped to when to use it, how it fit
 - keychain.md: Solana Keychain 2.0 for backend signers.
 - mosaic.md: Mosaic SDK 0.2.0. Template-to-extension table, sRFC-37 Token ACL and ABL model, and caveats: Kit 6, v0 only, sRFC-37 off by default.
 - SKILL.md: new "Solana Foundation tools" routing table, a Keychain line in the signer defaults, and description triggers for gasless transactions, server-side signing and stablecoin issuance.
+- frontend.md: the wallet send example uses `useSendTransaction` from `@solana/react` 8 in place of a hand-rolled `useAction` wrapper. `useAction` stays documented for other async flows, and `useSendTransactions` is pointed to for sends that may span several transactions.
+- testing.md: the LiteSVM plugin section targets `@solana/kit` 8.x.
+- payments.md: memos and reference accounts are described as payment correlation, not replay protection, since neither stops a second transfer in a separately signed transaction. A new "Retry and fulfillment boundaries" section covers storing the signature before submitting, rebroadcasting or reconciling before re-signing, and idempotent fulfillment that also requires a successful transaction at the required commitment. Adds Solana Pay, Memo program and transaction structure links.
+- resources.md: the Solana Pay link points at `solana.com/docs/tools/solana-pay`.
 
 ## 2.7.0 — 2026-10-14
 
