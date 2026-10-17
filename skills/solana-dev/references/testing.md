@@ -77,7 +77,7 @@ Upgrading from 0.14: 0.17 removes `LiteSVM::get_feature_set` and the `internal-t
 
 ### TypeScript Setup (Kit litesvm plugin)
 
-Use `@solana/kit` (7.x) with the LiteSVM plugin — the same client API as production code, backed by an in-process SVM instead of an RPC:
+Use `@solana/kit` (8.x) with the LiteSVM plugin — the same client API as production code, backed by an in-process SVM instead of an RPC:
 
 ```bash
 npm i --save-dev litesvm @solana/kit-plugin-litesvm @solana/kit-plugin-signer
