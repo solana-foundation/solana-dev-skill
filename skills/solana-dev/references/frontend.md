@@ -126,7 +126,7 @@ With the wallet plugin installed, `client.sendTransaction` plans a v1 transactio
 ```tsx
 'use client';
 
-import { address, sol, solToLamports } from '@solana/kit';
+import { isAddress, sol, solToLamports } from '@solana/kit';
 import { getTransferSolInstruction } from '@solana-program/system';
 import { useConnectedWallet } from '@solana/kit-plugin-wallet/react';
 import { useClient, useSendTransaction } from '@solana/react';
@@ -141,20 +141,23 @@ function TipButton({ to }: { to: string }) {
   // Each dispatch gets a fresh AbortSignal; resending aborts the in-flight send
   const { dispatch, isRunning, error, data } = useSendTransaction(client);
   const signature = data?.context.signature;
+  const recipient = isAddress(to) ? to : null;
 
-  const tip = () =>
+  const tip = () => {
+    if (!recipient) return;
     dispatch([
       getTransferSolInstruction({
         source: client.payer,
-        destination: address(to),
+        destination: recipient,
         // `sol()` returns a fixed-point value; instructions take Lamports
         amount: solToLamports(sol('0.01')),
       }),
     ]);
+  };
 
   return (
     <>
-      <button disabled={isRunning || !canSendV1} onClick={tip}>
+      <button disabled={isRunning || !canSendV1 || !recipient} onClick={tip}>
         {isRunning ? 'Sending…' : error ? 'Retry' : 'Tip 0.01 SOL'}
       </button>
       {signature ? <a href={`https://explorer.solana.com/tx/${signature}`}>View</a> : null}
