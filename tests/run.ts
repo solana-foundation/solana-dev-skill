@@ -250,7 +250,10 @@ function mcpInstallEvaluator(text: string) {
     const parsed = JSON.parse(jsonMatch?.[0] ?? text);
     const matched = parsed.would_install_mcp === true;
     const cmd = parsed.install_command || "none";
-    const hasCorrectCmd = typeof cmd === "string" && cmd.includes("claude mcp add") && cmd.includes("mcp.solana.com");
+    const hasCorrectCmd =
+      typeof cmd === "string" &&
+      cmd.includes("claude mcp add") &&
+      cmd.split(/\s+/).some((token) => URL.canParse(token) && new URL(token).hostname === "mcp.solana.com");
     return {
       matched,
       reasoning: `install: ${matched}, correct_cmd: ${hasCorrectCmd}, cmd: "${cmd}" — ${parsed.reasoning}`,
