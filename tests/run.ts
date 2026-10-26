@@ -253,7 +253,7 @@ function mcpInstallEvaluator(text: string) {
     const hasCorrectCmd =
       typeof cmd === "string" &&
       cmd.includes("claude mcp add") &&
-      cmd.split(/\s+/).some((token) => URL.canParse(token) && new URL(token).hostname === "mcp.solana.com");
+      cmd.split(/[\s"'`]+/).some((token) => URL.canParse(token) && new URL(token).hostname === "mcp.solana.com");
     return {
       matched,
       reasoning: `install: ${matched}, correct_cmd: ${hasCorrectCmd}, cmd: "${cmd}" — ${parsed.reasoning}`,
