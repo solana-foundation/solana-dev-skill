@@ -406,6 +406,7 @@ Add both checks to your `TryFrom` account validation alongside signer and owner 
 - [ ] Treat "signature received" as not-final; track confirmation
 - [ ] Never assume token program variant; detect Token-2022 vs classic
 - [ ] Validate transaction simulation results before signing
+- [ ] Before signing a transaction you did not build, decode its instructions and simulate it; check the programs, accounts, signers and balance changes against what the user asked for
 - [ ] Show clear error messages for common failure modes
 
 ---
