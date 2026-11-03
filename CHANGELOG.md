@@ -2,7 +2,7 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
-## 2.8.0 — Unreleased
+## 2.8.0 — 2026-11-03
 
 New references for three Solana tools, each scoped to when to use it, how it fits the Kit 8 / transaction v1 defaults, the verified happy path, and gotchas, with links to the Markdown versions of the solana.com docs for everything else.
 
