@@ -61,7 +61,7 @@ const [ata] = await findAssociatedTokenPda({
 
 ### Extension Initialization Order
 
-Extension instructions must come **before** mint initialization — the runtime processes them in order and mint init finalizes the account.
+Most extension instructions must come **before** `InitializeMint`. `TokenMetadata`, `TokenGroup` and `TokenGroupMember` come **after** it. See [tokens.md](../../tokens.md#initialization-order) for the full order and sizing rules.
 
 ### Account Fetching
 

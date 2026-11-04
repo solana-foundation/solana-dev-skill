@@ -2,6 +2,12 @@
 
 Versions track the `metadata.version` field in `skills/solana-dev/SKILL.md`. Earlier releases predate this file; see the git history.
 
+## 2.9.0 — Unreleased
+
+- tokens.md: new token concepts page. It covers SPL Token vs Token-2022 basics (finding a mint's program from its owner, mints and token accounts, ATAs, authorities, delegation, checked instructions) and Token-2022 extensions (TLV layout and sizing, mint vs account extensions, initialization order, notable behaviors, rejected combinations, and a per-extension reference with who controls each). Concepts only; it links out to the Kit, Pinocchio, confidential transfer and security pages for code.
+- kit/programs/token-2022.md: the initialization-order note says `TokenMetadata`, `TokenGroup` and `TokenGroupMember` go after `InitializeMint`, not before, and links to tokens.md.
+- SKILL.md, README.md: tokens.md added to the progressive-disclosure list and file tree.
+
 ## 2.8.0 — 2026-11-03
 
 New references for three Solana tools, each scoped to when to use it, how it fits the Kit 8 / transaction v1 defaults, the verified happy path, and gotchas, with links to the Markdown versions of the solana.com docs for everything else.
