@@ -137,13 +137,17 @@ await sendAndConfirm(signed, { commitment: 'confirmed' });
 
 ## Error Handling
 
+`isSystemError` takes the transaction message as its second argument, so it can check that the
+failing instruction belongs to the System Program. A transfer that exceeds the source balance
+fails with `SYSTEM_ERROR__RESULT_WITH_NEGATIVE_LAMPORTS`.
+
 ```ts
-import { isSystemError, SYSTEM_ERROR__INSUFFICIENT_FUNDS } from '@solana-program/system';
+import { isSystemError, SYSTEM_ERROR__RESULT_WITH_NEGATIVE_LAMPORTS } from '@solana-program/system';
 
 try {
-  await sendTransaction(tx);
+  await sendAndConfirm(signed, { commitment: 'confirmed' });
 } catch (e) {
-  if (isSystemError(e, SYSTEM_ERROR__INSUFFICIENT_FUNDS)) {
+  if (isSystemError(e, message, SYSTEM_ERROR__RESULT_WITH_NEGATIVE_LAMPORTS)) {
     console.error('Not enough SOL for transfer');
   }
 }

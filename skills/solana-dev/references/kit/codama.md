@@ -21,8 +21,8 @@ description: Naming conventions and patterns for Codama-generated @solana-progra
 | Account size | `get{Account}Size()` | `getMintSize()` |
 | Codec | `get{Type}[Encoder\|Decoder\|Codec]()` | `getMintDecoder()` |
 | PDA derivation | `find{Name}Pda()` | `findAssociatedTokenPda()` |
-| Errors | `{PROGRAM}_ERROR__{NAME}` | `SYSTEM_ERROR__INSUFFICIENT_FUNDS` |
-| Error check | `is{Program}Error()` | `isSystemError()` |
+| Errors | `{PROGRAM}_ERROR__{NAME}` | `SYSTEM_ERROR__ACCOUNT_ALREADY_IN_USE` |
+| Error check | `is{Program}Error(error, transactionMessage, code?)` | `isSystemError()` |
 
 ## Quick Examples
 
@@ -62,13 +62,16 @@ const [ata] = await findAssociatedTokenPda({
 
 ### Error Handling
 
+The second argument is the transaction message that was sent; the helper uses it to confirm the
+failing instruction targets this program.
+
 ```ts
-import { isSystemError, SYSTEM_ERROR__INSUFFICIENT_FUNDS } from '@solana-program/system';
+import { isSystemError, SYSTEM_ERROR__RESULT_WITH_NEGATIVE_LAMPORTS } from '@solana-program/system';
 
 try {
-  await sendTransaction(tx);
+  await sendAndConfirm(signedTransaction, { commitment: 'confirmed' });
 } catch (e) {
-  if (isSystemError(e, SYSTEM_ERROR__INSUFFICIENT_FUNDS)) {
+  if (isSystemError(e, transactionMessage, SYSTEM_ERROR__RESULT_WITH_NEGATIVE_LAMPORTS)) {
     console.error('Not enough SOL');
   }
 }
