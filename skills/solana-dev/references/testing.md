@@ -117,11 +117,14 @@ svm.set_sysvar(&Clock { slot: 1000, .. });
 // Warp to slot
 svm.warp_to_slot(5000);
 
-// Configure compute budget
-svm.set_compute_budget(ComputeBudget { max_units: 400_000, .. });
+// Configure compute budget. `with_*` methods are builders that take and return the
+// LiteSVM, so reassign the result (or chain them on `LiteSVM::new()`).
+let mut compute_budget = ComputeBudget::new_with_defaults(false);
+compute_budget.compute_unit_limit = 400_000;
+svm = svm.with_compute_budget(compute_budget);
 
 // Toggle signature verification (useful for testing)
-svm.with_sigverify(false);
+svm = svm.with_sigverify(false);
 
 // Check compute units used
 let result = svm.send_transaction(tx)?;
@@ -195,17 +198,23 @@ fn test_instruction() {
 ```rust
 use mollusk_svm_programs_token::token;
 token::add_program(&mut mollusk);
-let mint_account = token::mint_account(decimals, supply, mint_authority);
-let token_account = token::token_account(mint, owner, amount);
+// Both helpers take the unpacked `spl_token_interface::state` struct and return an `Account`
+// that is rent-exempt and owned by the token program.
+let mint_account = token::create_account_for_mint(mint_data);
+let token_account = token::create_account_for_token_account(token_account_data);
 ```
 
-```rust
-use mollusk_svm::MolluskComputeUnitBencher;
+The compute unit bencher lives in its own crate (`cargo add --dev mollusk-svm-bencher`). Each
+bench is a `(name, &instruction, &accounts)` tuple, and nothing runs until `execute()`:
 
-let bencher = MolluskComputeUnitBencher::new(mollusk)
+```rust
+use mollusk_svm_bencher::MolluskComputeUnitBencher;
+
+MolluskComputeUnitBencher::new(mollusk)
+    .bench(("deposit_instruction", &instruction, &accounts))
     .must_pass(true)
-    .out_dir("../target/benches");
-bencher.bench("deposit_instruction", &instruction, &accounts);
+    .out_dir("../target/benches")
+    .execute();
 // Generates markdown report with CU usage and deltas
 ```
 
