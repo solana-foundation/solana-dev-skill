@@ -29,6 +29,14 @@ npx skills add solana-foundation/solana-dev-skill
 
 The [skills CLI](https://www.skills.sh/) detects your installed agents and installs (or symlinks) the skill for each of them.
 
+### GitHub CLI
+
+Install with the [GitHub CLI](https://cli.github.com/manual/gh_skill_install):
+
+```bash
+gh skill install solana-foundation/solana-dev-skill
+```
+
 ### Install script
 
 ```bash
